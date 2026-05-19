@@ -1,0 +1,27 @@
+{
+  "name": "escpos-to-html",
+  "version": "0.0.0",
+  "private": true,
+  "description": "ESC/POS to HTML converter (Tauri desktop app)",
+  "packageManager": "pnpm@9.0.0",
+  "engines": {
+    "node": ">=20",
+    "pnpm": ">=9"
+  },
+  "scripts": {
+    "dev": "pnpm --filter @escpos/desktop tauri dev",
+    "dev:web": "pnpm --filter @escpos/desktop dev",
+    "build": "pnpm --filter @escpos/desktop tauri build",
+    "build:web": "pnpm --filter @escpos/desktop build",
+    "test": "pnpm -r --parallel test",
+    "test:rust": "pnpm --filter @escpos/desktop test:rust",
+    "lint": "pnpm -r --parallel lint",
+    "typecheck": "pnpm -r --parallel typecheck",
+    "format": "prettier --write \"**/*.{ts,tsx,js,jsx,json,md,yaml,yml,css}\"",
+    "format:check": "prettier --check \"**/*.{ts,tsx,js,jsx,json,md,yaml,yml,css}\""
+  },
+  "devDependencies": {
+    "prettier": "^3.3.3",
+    "typescript": "^5.6.3"
+  }
+}
