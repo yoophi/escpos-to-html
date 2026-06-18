@@ -1,0 +1,7 @@
+{
+  "files": [],
+  "references": [
+    { "path": "./packages/escpos" },
+    { "path": "./apps/web" }
+  ]
+}

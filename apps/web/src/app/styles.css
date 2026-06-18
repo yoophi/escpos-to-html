@@ -1,0 +1,145 @@
+.source-editor {
+  position: relative;
+  min-height: 464px;
+  background: #111111;
+}
+
+.source-editor textarea,
+.source-mirror {
+  width: 100%;
+  min-height: 464px;
+  padding: 18px;
+  box-sizing: border-box;
+  font-size: 15px;
+  line-height: 1.55;
+  tab-size: 2;
+}
+
+.source-editor textarea {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  resize: vertical;
+  background: transparent;
+  color: transparent;
+  caret-color: #f4f0df;
+}
+
+.source-editor textarea::selection {
+  background: rgba(68, 145, 220, 0.55);
+  color: transparent;
+}
+
+.source-mirror {
+  position: relative;
+  z-index: 0;
+  overflow: hidden;
+  color: #f4f0df;
+  pointer-events: none;
+  white-space: pre;
+}
+
+.source-line {
+  min-height: 1.55em;
+}
+
+.source-char {
+  display: inline-block;
+  text-align: center;
+  white-space: pre;
+}
+
+.receipt-stage {
+  min-height: 560px;
+  padding: 34px 24px;
+  display: grid;
+  place-items: start center;
+  background:
+    linear-gradient(90deg, rgba(29, 29, 29, 0.05) 1px, transparent 1px),
+    linear-gradient(rgba(29, 29, 29, 0.05) 1px, transparent 1px),
+    var(--receipt-grid);
+  background-size: 22px 22px;
+}
+
+.receipt-paper {
+  width: min(100%, 384px);
+  min-height: 480px;
+  padding: 28px 24px 40px;
+  box-sizing: border-box;
+  background:
+    linear-gradient(135deg, rgba(0, 0, 0, 0.035), transparent 18%),
+    var(--receipt-paper);
+  color: var(--receipt-ink);
+  font: 14px/1.35 "Courier New", ui-monospace, monospace;
+  white-space: pre-wrap;
+  box-shadow: 0 24px 60px rgba(30, 26, 18, 0.18);
+}
+
+.receipt-char {
+  display: inline-block;
+  width: 1ch;
+  text-align: center;
+  white-space: pre;
+}
+
+.receipt-paper::after {
+  content: "";
+  display: block;
+  height: 14px;
+  margin: 34px -24px -40px;
+  background:
+    linear-gradient(135deg, transparent 75%, var(--receipt-grid) 75%) 0 0 / 18px 18px,
+    linear-gradient(225deg, transparent 75%, var(--receipt-grid) 75%) 0 0 / 18px 18px,
+    var(--receipt-paper);
+}
+
+.receipt-line {
+  min-height: 18px;
+}
+
+.align-left {
+  text-align: left;
+}
+
+.align-center {
+  text-align: center;
+}
+
+.align-right {
+  text-align: right;
+}
+
+.is-bold {
+  font-weight: 900;
+}
+
+.underline-1 {
+  text-decoration: underline;
+}
+
+.underline-2 {
+  text-decoration: underline;
+  text-decoration-thickness: 2px;
+}
+
+.is-inverted {
+  padding: 1px 3px;
+  background: #151515;
+  color: #fffdf4;
+}
+
+.font-b {
+  font-size: 0.88em;
+}
+
+.font-c {
+  font-size: 0.78em;
+}
+
+@media (max-width: 1040px) {
+  .source-editor,
+  .source-editor textarea,
+  .source-mirror {
+    min-height: 360px;
+  }
+}
