@@ -1,4 +1,4 @@
-import { AlertTriangle, Sparkles } from 'lucide-react'
+import { AlertTriangle } from 'lucide-react'
 import { type ControlEvent } from '@escpos-to-html/escpos'
 import { Badge } from '../../shared/ui/shadcn/badge'
 import { Card, CardContent, CardHeader, CardTitle } from '../../shared/ui/shadcn/card'
@@ -13,10 +13,7 @@ export function ParseEvents({ events, warnings }: ParseEventsProps) {
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="flex items-center gap-2 text-base">
-          <Sparkles size={17} aria-hidden="true" />
-          Parsed controls
-        </CardTitle>
+        <CardTitle className="text-base">Parsed controls</CardTitle>
       </CardHeader>
       <CardContent>
       {events.length === 0 ? (

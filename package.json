@@ -8,6 +8,8 @@
     "dev": "pnpm --filter web dev",
     "build": "pnpm -r build",
     "lint": "pnpm -r lint",
+    "test": "pnpm --filter @escpos-to-html/escpos test",
+    "test:coverage": "pnpm --filter @escpos-to-html/escpos test:coverage",
     "preview": "pnpm --filter web preview"
   },
   "devDependencies": {

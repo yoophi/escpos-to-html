@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { Braces, FileText, Scissors } from 'lucide-react'
-import { type InputMode, parseEscpos, renderHtml } from '@escpos-to-html/escpos'
+import { parseEscpos, renderHtml } from '@escpos-to-html/escpos'
 import { type EscposSample, findSample } from '../../entities/sample'
 import { Badge } from '../../shared/ui/shadcn/badge'
 import { SampleSelector } from '../../widgets/sample-selector'
@@ -20,9 +20,8 @@ export function WorkbenchPage() {
 function SampleWorkbench({ selectedSample }: { selectedSample: EscposSample }) {
   const navigate = useNavigate()
   const [input, setInput] = useState(selectedSample.input)
-  const [mode, setMode] = useState<InputMode>(selectedSample.mode)
   const [wrapPlainTextSpans, setWrapPlainTextSpans] = useState(true)
-  const result = useMemo(() => parseEscpos(input, mode), [input, mode])
+  const result = useMemo(() => parseEscpos(input, 'escaped'), [input])
   const html = useMemo(() => renderHtml(result, { wrapPlainTextSpans }), [result, wrapPlainTextSpans])
 
   return (
@@ -53,7 +52,7 @@ function SampleWorkbench({ selectedSample }: { selectedSample: EscposSample }) {
       />
 
       <section className="grid gap-4 xl:grid-cols-[minmax(420px,1fr)_minmax(420px,0.95fr)]" id="workspace" aria-label="ESC/POS preview workspace">
-        <EscposEditor input={input} mode={mode} result={result} onInputChange={setInput} onModeChange={setMode} />
+        <EscposEditor input={input} result={result} onInputChange={setInput} />
         <ReceiptPreview result={result} html={html} />
       </section>
 

@@ -51,6 +51,7 @@
   --receipt-paper: #fffdf4;
   --receipt-grid: #d8d2c3;
   --receipt-ink: #181713;
+  --font-code: "Nanum Gothic Coding", "D2Coding", "Noto Sans Mono CJK KR", ui-monospace, "SFMono-Regular", Menlo, Monaco, Consolas, "Liberation Mono", monospace;
 }
 
 @layer base {

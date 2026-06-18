@@ -15,8 +15,8 @@ export function ReceiptPreview({ result, html }: ReceiptPreviewProps) {
   }
 
   return (
-    <Card className="overflow-hidden">
-      <CardHeader>
+    <Card className="h-full gap-0 overflow-hidden py-0">
+      <CardHeader className="py-6">
         <CardDescription>Preview</CardDescription>
         <CardTitle>Thermal receipt</CardTitle>
         <CardAction>
@@ -26,34 +26,34 @@ export function ReceiptPreview({ result, html }: ReceiptPreviewProps) {
         </CardAction>
       </CardHeader>
 
-      <CardContent className="px-0 pb-0">
+      <CardContent className="flex min-h-0 flex-1 px-0 pb-0">
         <div className="receipt-stage">
-        <div className="receipt-paper" aria-label="Rendered receipt preview">
-          {result.lines.map((line, index) => (
-            <div className={`receipt-line align-${line.align}`} key={`${index}-${line.align}`}>
-              {line.spans.length === 0
-                ? '\u00a0'
-                : line.spans.map((span, spanIndex) => (
-                    <span
-                      key={`${index}-${spanIndex}`}
-                      className={[
-                        span.style.bold ? 'is-bold' : '',
-                        span.style.underline ? `underline-${span.style.underline}` : '',
-                        span.style.inverted ? 'is-inverted' : '',
-                        span.style.font !== 'A' ? `font-${span.style.font.toLowerCase()}` : '',
-                      ].join(' ')}
-                      style={{
-                        fontSize: span.style.height > 1 ? `${span.style.height}em` : undefined,
-                        lineHeight: span.style.height > 1 ? 1.05 : undefined,
-                      }}
-                    >
-                      <PrintText text={span.text} widthMultiplier={span.style.width} />
-                    </span>
-                  ))}
-            </div>
-          ))}
+          <div className="receipt-paper" aria-label="Rendered receipt preview">
+            {result.lines.map((line, index) => (
+              <div className={`receipt-line align-${line.align}`} key={`${index}-${line.align}`}>
+                {line.spans.length === 0
+                  ? '\u00a0'
+                  : line.spans.map((span, spanIndex) => (
+                      <span
+                        key={`${index}-${spanIndex}`}
+                        className={[
+                          span.style.bold ? 'is-bold' : '',
+                          span.style.underline ? `underline-${span.style.underline}` : '',
+                          span.style.inverted ? 'is-inverted' : '',
+                          span.style.font !== 'A' ? `font-${span.style.font.toLowerCase()}` : '',
+                        ].join(' ')}
+                        style={{
+                          fontSize: span.style.height > 1 ? `${span.style.height}em` : undefined,
+                          lineHeight: span.style.height > 1 ? 1.05 : undefined,
+                        }}
+                      >
+                        <PrintText text={span.text} widthMultiplier={span.style.width} />
+                      </span>
+                    ))}
+              </div>
+            ))}
+          </div>
         </div>
-      </div>
       </CardContent>
     </Card>
   )

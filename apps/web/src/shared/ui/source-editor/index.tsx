@@ -1,5 +1,6 @@
-import { isWidePrintChar } from '@escpos-to-html/escpos'
-import { Textarea } from '../shadcn/textarea'
+import CodeMirror from '@uiw/react-codemirror'
+import { EditorState } from '@codemirror/state'
+import { EditorView } from '@codemirror/view'
 
 type SourceEditorProps = {
   value: string
@@ -8,29 +9,19 @@ type SourceEditorProps = {
 
 export function SourceEditor({ value, onChange }: SourceEditorProps) {
   return (
-    <div className="source-editor">
-      <div className="source-mirror" aria-hidden="true">
-        {value.split('\n').map((line, lineIndex) => (
-          <div className="source-line" key={`${lineIndex}-${line}`}>
-            {Array.from(line).map((char, charIndex) => (
-              <span
-                className="source-char"
-                key={`${lineIndex}-${charIndex}-${char}`}
-                style={{ width: `${isWidePrintChar(char) ? 2 : 1}ch` }}
-              >
-                {char === ' ' ? '\u00a0' : char}
-              </span>
-            ))}
-            {'\n'}
-          </div>
-        ))}
-      </div>
-      <Textarea
-        value={value}
-        spellCheck={false}
-        onChange={(event) => onChange(event.target.value)}
-        aria-label="ESC/POS input"
-      />
-    </div>
+    <CodeMirror
+      value={value}
+      height="464px"
+      basicSetup={{
+        foldGutter: false,
+        highlightActiveLine: false,
+        highlightActiveLineGutter: false,
+      }}
+      extensions={[EditorState.tabSize.of(2), EditorView.lineWrapping]}
+      onChange={onChange}
+      aria-label="ESC/POS input"
+      className="source-editor"
+      theme="dark"
+    />
   )
 }
