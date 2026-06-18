@@ -3,6 +3,7 @@ export type EscposSample = {
   title: string
   description: string
   input: string
+  preferredPreviewColumns?: 21 | 42
 }
 
 export const samples: EscposSample[] = [
@@ -39,6 +40,23 @@ Tax                    1.45
 부가세               1,773
 \g!\x11합계                19,500\g!\x00
 \e a\x01\gB\x01 카드결제 완료 \gB\x00
+감사합니다
+\e d\x02\gV\x00`,
+  },
+  {
+    id: 'korean-21-column',
+    title: '21-column receipt',
+    description: '21컬럼 폭에서 한글 2칸 기준으로 줄이 깨지지 않도록 구성한 영수증입니다.',
+    preferredPreviewColumns: 21,
+    input: String.raw`\e@\e a\x01\eE\x01작은가게\eE\x00
+2.5IN RECEIPT
+\e a\x00---------------------
+김밥       1 4,000
+라면       1 5,000
+콜라       1 1,500
+---------------------
+\e a\x02합계      10,500
+\e a\x01\gB\x01 결제완료 \gB\x00
 감사합니다
 \e d\x02\gV\x00`,
   },

@@ -44,7 +44,9 @@
 }
 
 .receipt-paper {
-  width: min(100%, 384px);
+  --receipt-paper-width: calc(42ch + 48px);
+  width: var(--receipt-paper-width);
+  max-width: none;
   min-height: 480px;
   padding: 28px 24px 40px;
   box-sizing: border-box;
