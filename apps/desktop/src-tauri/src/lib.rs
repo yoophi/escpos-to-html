@@ -10,7 +10,7 @@ mod domain;
 mod infrastructure;
 
 use adapter::tauri_commands;
-use adapter::tcp_receipt_server::TcpReceiptServerState;
+use infrastructure::TcpReceiptServerState;
 
 pub fn run() {
     tauri::Builder::default()

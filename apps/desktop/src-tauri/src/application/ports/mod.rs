@@ -2,6 +2,8 @@
 
 pub mod escpos_parser;
 pub mod html_renderer;
+pub mod receipt_events;
 
 pub use escpos_parser::EscPosParser;
 pub use html_renderer::HtmlRenderer;
+pub use receipt_events::ReceiptEventPublisher;

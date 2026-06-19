@@ -1,8 +1,12 @@
+use std::sync::Arc;
+
 use serde::Serialize;
 use tauri::{AppHandle, Manager};
 
-use crate::adapter::tcp_receipt_server::{TcpReceiptServerState, TcpServerConfig, TcpServerStatus};
+use crate::adapter::tauri_receipt_events::TauriReceiptEventPublisher;
 use crate::application::use_cases::ConvertEscPosToHtml;
+use crate::domain::{TcpServerConfig, TcpServerStatus};
+use crate::infrastructure::TcpReceiptServerState;
 use crate::infrastructure::{NoopEscPosParser, SimpleHtmlRenderer};
 
 #[derive(Debug, Serialize)]
@@ -39,8 +43,9 @@ pub async fn start_tcp_server(
     config: TcpServerConfig,
 ) -> Result<TcpServerStatus, CommandError> {
     let state = app.state::<TcpReceiptServerState>();
+    let publisher = Arc::new(TauriReceiptEventPublisher::new(app.clone()));
     state
-        .start(app.clone(), config)
+        .start(config, publisher)
         .await
         .map_err(CommandError::from_message)
 }

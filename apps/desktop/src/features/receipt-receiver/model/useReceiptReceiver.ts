@@ -11,13 +11,44 @@ import {
 } from '@/entities/receipt';
 
 const MAX_RENDERED_RECEIPTS = 200;
+const TCP_SERVER_CONFIG_STORAGE_KEY = 'escpos.desktop.tcpServerConfig.v1';
+
+const loadStoredConfig = (): TcpServerConfig => {
+  if (typeof window === 'undefined') return defaultTcpServerConfig;
+
+  try {
+    const raw = window.localStorage.getItem(TCP_SERVER_CONFIG_STORAGE_KEY);
+    if (!raw) return defaultTcpServerConfig;
+
+    const parsed = JSON.parse(raw) as Partial<TcpServerConfig>;
+    const port = Number(parsed.port);
+    const receiptIdleTimeoutMs = Number(parsed.receiptIdleTimeoutMs);
+    const maxReceipts = Number(parsed.maxReceipts);
+
+    return {
+      host: typeof parsed.host === 'string' && parsed.host.trim() ? parsed.host : defaultTcpServerConfig.host,
+      port: Number.isInteger(port) && port >= 1 && port <= 65535 ? port : defaultTcpServerConfig.port,
+      receiptIdleTimeoutMs:
+        Number.isFinite(receiptIdleTimeoutMs) && receiptIdleTimeoutMs > 0
+          ? receiptIdleTimeoutMs
+          : defaultTcpServerConfig.receiptIdleTimeoutMs,
+      maxReceipts: Number.isInteger(maxReceipts) && maxReceipts > 0 ? maxReceipts : defaultTcpServerConfig.maxReceipts,
+    };
+  } catch {
+    return defaultTcpServerConfig;
+  }
+};
 
 export function useReceiptReceiver() {
-  const [config, setConfig] = useState<TcpServerConfig>(defaultTcpServerConfig);
+  const [config, setConfig] = useState<TcpServerConfig>(() => loadStoredConfig());
   const [status, setStatus] = useState<TcpServerStatus>({ status: 'stopped' });
   const [receipts, setReceipts] = useState<ReceiptViewModel[]>([]);
   const [selectedReceiptId, setSelectedReceiptId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    window.localStorage.setItem(TCP_SERVER_CONFIG_STORAGE_KEY, JSON.stringify(config));
+  }, [config]);
 
   useEffect(() => {
     let disposed = false;

@@ -4,6 +4,8 @@
 
 pub mod parsers;
 pub mod renderers;
+pub mod tcp;
 
 pub use parsers::NoopEscPosParser;
 pub use renderers::SimpleHtmlRenderer;
+pub use tcp::TcpReceiptServerState;

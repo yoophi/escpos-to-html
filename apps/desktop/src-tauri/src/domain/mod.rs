@@ -5,6 +5,8 @@
 
 pub mod document;
 pub mod errors;
+pub mod tcp_receipt;
 
 pub use document::*;
 pub use errors::DomainError;
+pub use tcp_receipt::*;

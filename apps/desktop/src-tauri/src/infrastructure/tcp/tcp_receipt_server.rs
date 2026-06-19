@@ -2,70 +2,20 @@ use std::net::SocketAddr;
 use std::sync::Arc;
 use std::time::Duration;
 
-use chrono::{DateTime, Utc};
-use serde::{Deserialize, Serialize};
-use tauri::{AppHandle, Emitter, Manager};
+use chrono::Utc;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::{TcpListener, TcpStream};
 use tokio::sync::{oneshot, Mutex};
 use uuid::Uuid;
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct TcpServerConfig {
-    pub host: String,
-    pub port: u16,
-    pub receipt_idle_timeout_ms: u64,
-    pub max_receipts: usize,
-}
+use crate::application::ports::ReceiptEventPublisher;
+use crate::domain::{
+    ReceiptCompleteReason, ReceivedReceipt, TcpClientInfo, TcpServerConfig, TcpServerStatus,
+};
 
-impl Default for TcpServerConfig {
-    fn default() -> Self {
-        Self {
-            host: "127.0.0.1".into(),
-            port: 9100,
-            receipt_idle_timeout_ms: 800,
-            max_receipts: 200,
-        }
-    }
-}
-
-#[derive(Debug, Clone, Serialize)]
-#[serde(tag = "status", rename_all = "snake_case")]
-pub enum TcpServerStatus {
-    Stopped,
-    Starting,
-    Listening { host: String, port: u16 },
-    Failed { message: String },
-}
-
-#[derive(Debug, Clone, Serialize)]
-#[serde(rename_all = "camelCase")]
-pub struct ReceivedReceipt {
-    pub id: String,
-    pub received_at: DateTime<Utc>,
-    pub client: TcpClientInfo,
-    pub bytes: Vec<u8>,
-    pub reason: ReceiptCompleteReason,
-}
-
-#[derive(Debug, Clone, Serialize)]
-#[serde(rename_all = "camelCase")]
-pub struct TcpClientInfo {
-    pub peer_addr: String,
-    pub connected_at: DateTime<Utc>,
-}
-
-#[derive(Debug, Clone, Serialize)]
-#[serde(rename_all = "snake_case")]
-pub enum ReceiptCompleteReason {
-    Cut,
-    IdleTimeout,
-    ConnectionClosed,
-}
-
+#[derive(Clone)]
 pub struct TcpReceiptServerState {
-    inner: Mutex<TcpReceiptServerInner>,
+    inner: Arc<Mutex<TcpReceiptServerInner>>,
 }
 
 struct TcpReceiptServerInner {
@@ -76,10 +26,10 @@ struct TcpReceiptServerInner {
 impl Default for TcpReceiptServerState {
     fn default() -> Self {
         Self {
-            inner: Mutex::new(TcpReceiptServerInner {
+            inner: Arc::new(Mutex::new(TcpReceiptServerInner {
                 status: TcpServerStatus::Stopped,
                 stop_tx: None,
-            }),
+            })),
         }
     }
 }
@@ -91,8 +41,8 @@ impl TcpReceiptServerState {
 
     pub async fn start(
         &self,
-        app: AppHandle,
         config: TcpServerConfig,
+        publisher: Arc<dyn ReceiptEventPublisher>,
     ) -> Result<TcpServerStatus, String> {
         self.stop().await;
 
@@ -100,7 +50,7 @@ impl TcpReceiptServerState {
             let mut inner = self.inner.lock().await;
             inner.status = TcpServerStatus::Starting;
         }
-        emit_status(&app, TcpServerStatus::Starting);
+        publisher.publish_status(TcpServerStatus::Starting);
 
         let bind_addr = format!("{}:{}", config.host, config.port);
         let listener = match TcpListener::bind(&bind_addr).await {
@@ -113,7 +63,7 @@ impl TcpReceiptServerState {
                 let mut inner = self.inner.lock().await;
                 inner.status = status.clone();
                 drop(inner);
-                emit_status(&app, status);
+                publisher.publish_status(status);
                 return Err(message);
             }
         };
@@ -126,23 +76,29 @@ impl TcpReceiptServerState {
         };
         let (stop_tx, stop_rx) = oneshot::channel();
         let shared_config = Arc::new(config);
-        let app_for_task = app.clone();
+        let inner = Arc::clone(&self.inner);
+        let publisher_for_task = Arc::clone(&publisher);
 
         {
             let mut inner = self.inner.lock().await;
             inner.status = status.clone();
             inner.stop_tx = Some(stop_tx);
         }
-        emit_status(&app, status.clone());
+        publisher.publish_status(status.clone());
 
-        tauri::async_runtime::spawn(async move {
-            run_server(listener, app_for_task.clone(), shared_config, stop_rx).await;
-            let state = app_for_task.state::<TcpReceiptServerState>();
-            let mut inner = state.inner.lock().await;
+        tokio::spawn(async move {
+            run_server(
+                listener,
+                Arc::clone(&publisher_for_task),
+                shared_config,
+                stop_rx,
+            )
+            .await;
+            let mut inner = inner.lock().await;
             inner.status = TcpServerStatus::Stopped;
             inner.stop_tx = None;
             drop(inner);
-            emit_status(&app_for_task, TcpServerStatus::Stopped);
+            publisher_for_task.publish_status(TcpServerStatus::Stopped);
         });
 
         Ok(status)
@@ -160,7 +116,7 @@ impl TcpReceiptServerState {
 
 async fn run_server(
     listener: TcpListener,
-    app: AppHandle,
+    publisher: Arc<dyn ReceiptEventPublisher>,
     config: Arc<TcpServerConfig>,
     mut stop_rx: oneshot::Receiver<()>,
 ) {
@@ -170,14 +126,14 @@ async fn run_server(
             accepted = listener.accept() => {
                 match accepted {
                     Ok((stream, peer_addr)) => {
-                        let app = app.clone();
+                        let publisher = Arc::clone(&publisher);
                         let config = Arc::clone(&config);
-                        tauri::async_runtime::spawn(async move {
-                            handle_client(stream, peer_addr, app, config).await;
+                        tokio::spawn(async move {
+                            handle_client(stream, peer_addr, publisher, config).await;
                         });
                     }
                     Err(error) => {
-                        let _ = app.emit("tcp://error", format!("TCP accept 실패: {error}"));
+                        publisher.publish_error(format!("TCP accept 실패: {error}"));
                     }
                 }
             }
@@ -188,7 +144,7 @@ async fn run_server(
 async fn handle_client(
     mut stream: TcpStream,
     peer_addr: SocketAddr,
-    app: AppHandle,
+    publisher: Arc<dyn ReceiptEventPublisher>,
     config: Arc<TcpServerConfig>,
 ) {
     let connected_at = Utc::now();
@@ -203,8 +159,8 @@ async fn handle_client(
     loop {
         match tokio::time::timeout(idle_timeout, stream.read(&mut chunk)).await {
             Ok(Ok(0)) => {
-                emit_receipt_if_needed(
-                    &app,
+                publish_receipt_if_needed(
+                    &publisher,
                     &client,
                     &mut buffer,
                     ReceiptCompleteReason::ConnectionClosed,
@@ -215,8 +171,8 @@ async fn handle_client(
                 buffer.extend_from_slice(&chunk[..size]);
                 while let Some(cut_end) = find_cut_command_end(&buffer) {
                     let receipt_bytes = buffer.drain(..cut_end).collect::<Vec<_>>();
-                    emit_receipt(
-                        &app,
+                    publish_receipt(
+                        &publisher,
                         client.clone(),
                         receipt_bytes,
                         ReceiptCompleteReason::Cut,
@@ -224,9 +180,9 @@ async fn handle_client(
                 }
             }
             Ok(Err(error)) => {
-                let _ = app.emit("tcp://error", format!("TCP read 실패: {error}"));
-                emit_receipt_if_needed(
-                    &app,
+                publisher.publish_error(format!("TCP read 실패: {error}"));
+                publish_receipt_if_needed(
+                    &publisher,
                     &client,
                     &mut buffer,
                     ReceiptCompleteReason::ConnectionClosed,
@@ -234,8 +190,8 @@ async fn handle_client(
                 break;
             }
             Err(_) => {
-                emit_receipt_if_needed(
-                    &app,
+                publish_receipt_if_needed(
+                    &publisher,
                     &client,
                     &mut buffer,
                     ReceiptCompleteReason::IdleTimeout,
@@ -247,8 +203,8 @@ async fn handle_client(
     let _ = stream.shutdown().await;
 }
 
-fn emit_receipt_if_needed(
-    app: &AppHandle,
+fn publish_receipt_if_needed(
+    publisher: &Arc<dyn ReceiptEventPublisher>,
     client: &TcpClientInfo,
     buffer: &mut Vec<u8>,
     reason: ReceiptCompleteReason,
@@ -257,11 +213,11 @@ fn emit_receipt_if_needed(
         return;
     }
     let bytes = std::mem::take(buffer);
-    emit_receipt(app, client.clone(), bytes, reason);
+    publish_receipt(publisher, client.clone(), bytes, reason);
 }
 
-fn emit_receipt(
-    app: &AppHandle,
+fn publish_receipt(
+    publisher: &Arc<dyn ReceiptEventPublisher>,
     client: TcpClientInfo,
     bytes: Vec<u8>,
     reason: ReceiptCompleteReason,
@@ -273,11 +229,7 @@ fn emit_receipt(
         bytes,
         reason,
     };
-    let _ = app.emit("receipt://received", receipt);
-}
-
-fn emit_status(app: &AppHandle, status: TcpServerStatus) {
-    let _ = app.emit("tcp://status-changed", status);
+    publisher.publish_receipt(receipt);
 }
 
 fn find_cut_command_end(bytes: &[u8]) -> Option<usize> {
@@ -294,4 +246,19 @@ fn find_cut_command_end(bytes: &[u8]) -> Option<usize> {
         index += 1;
     }
     None
+}
+
+#[cfg(test)]
+mod tests {
+    use super::find_cut_command_end;
+
+    #[test]
+    fn finds_cut_command_end() {
+        assert_eq!(
+            find_cut_command_end(&[0x41, 0x1d, 0x56, 0x00, 0x42]),
+            Some(4)
+        );
+        assert_eq!(find_cut_command_end(&[0x1d, 0x56, 0x41, 0x10]), Some(4));
+        assert_eq!(find_cut_command_end(&[0x1d, 0x56]), None);
+    }
 }
