@@ -2,7 +2,6 @@ import { Navigate, Route, Routes } from 'react-router-dom'
 import { DocsPage } from '../pages/docs'
 import { WorkbenchPage } from '../pages/workbench'
 import { defaultSample } from '../entities/sample'
-import './styles.css'
 
 export function App() {
   return (

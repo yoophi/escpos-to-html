@@ -6,13 +6,16 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
-    "lint": "eslint .",
-    "preview": "vite preview"
+    "lint": "eslint src .storybook",
+    "preview": "vite preview",
+    "storybook": "storybook dev -p 6006",
+    "build-storybook": "storybook build"
   },
   "dependencies": {
     "@codemirror/state": "^6.6.0",
     "@codemirror/view": "^6.43.1",
     "@escpos-to-html/escpos": "workspace:*",
+    "@escpos-to-html/ui": "workspace:*",
     "@fontsource/nanum-gothic-coding": "^5.2.8",
     "@radix-ui/react-checkbox": "^1.3.5",
     "@radix-ui/react-scroll-area": "^1.2.12",
@@ -31,6 +34,7 @@
     "tw-animate-css": "^1.4.0"
   },
   "devDependencies": {
+    "@storybook/react-vite": "10.4.6",
     "@types/node": "^24.12.3",
     "@types/react": "^19.2.14",
     "@types/react-dom": "^19.2.3",
@@ -38,6 +42,7 @@
     "eslint": "^10.3.0",
     "eslint-plugin-react-hooks": "^7.1.1",
     "eslint-plugin-react-refresh": "^0.5.2",
+    "storybook": "10.4.6",
     "typescript": "~6.0.2",
     "vite": "^8.0.12"
   }

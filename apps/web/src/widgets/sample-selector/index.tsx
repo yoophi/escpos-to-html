@@ -1,7 +1,7 @@
 import { type EscposSample, samples } from '../../entities/sample'
-import { Button } from '../../shared/ui/shadcn/button'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../../shared/ui/shadcn/card'
-import { ScrollArea, ScrollBar } from '../../shared/ui/shadcn/scroll-area'
+import { Button } from '@escpos-to-html/ui'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@escpos-to-html/ui'
+import { ScrollArea, ScrollBar } from '@escpos-to-html/ui'
 
 type SampleSelectorProps = {
   selectedSample: EscposSample

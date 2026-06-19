@@ -1,4 +1,4 @@
-import { Button } from '@/shared/ui';
+import { Button } from '@escpos-to-html/ui';
 
 export function ConverterPage() {
   return (

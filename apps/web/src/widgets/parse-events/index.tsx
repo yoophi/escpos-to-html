@@ -1,8 +1,9 @@
 import { AlertTriangle } from 'lucide-react'
 import { type ControlEvent } from '@escpos-to-html/escpos'
-import { Badge } from '../../shared/ui/shadcn/badge'
-import { Card, CardContent, CardHeader, CardTitle } from '../../shared/ui/shadcn/card'
-import { Separator } from '../../shared/ui/shadcn/separator'
+import { PanelHeader } from '@escpos-to-html/ui'
+import { Badge } from '@escpos-to-html/ui'
+import { Card, CardContent } from '@escpos-to-html/ui'
+import { Separator } from '@escpos-to-html/ui'
 
 type ParseEventsProps = {
   events: ControlEvent[]
@@ -12,9 +13,7 @@ type ParseEventsProps = {
 export function ParseEvents({ events, warnings }: ParseEventsProps) {
   return (
     <Card>
-      <CardHeader>
-        <CardTitle className="text-base">Parsed controls</CardTitle>
-      </CardHeader>
+      <PanelHeader title="Parsed controls" />
       <CardContent>
       {events.length === 0 ? (
         <p className="text-sm text-muted-foreground">No printer control events detected.</p>

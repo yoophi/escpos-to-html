@@ -1,5 +1,5 @@
-import { ConverterPage } from '@/pages/converter';
+import { ReceiverPage } from '@/pages/receiver';
 
 export function App() {
-  return <ConverterPage />;
+  return <ReceiverPage />;
 }

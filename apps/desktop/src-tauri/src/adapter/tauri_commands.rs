@@ -1,5 +1,7 @@
 use serde::Serialize;
+use tauri::{AppHandle, Manager};
 
+use crate::adapter::tcp_receipt_server::{TcpReceiptServerState, TcpServerConfig, TcpServerStatus};
 use crate::application::use_cases::ConvertEscPosToHtml;
 use crate::infrastructure::{NoopEscPosParser, SimpleHtmlRenderer};
 
@@ -29,4 +31,37 @@ pub fn convert_escpos_to_html(bytes: Vec<u8>) -> Result<String, CommandError> {
     let uc = ConvertEscPosToHtml::new(NoopEscPosParser, SimpleHtmlRenderer);
     let html = uc.execute(&bytes)?;
     Ok(html.as_str().to_owned())
+}
+
+#[tauri::command]
+pub async fn start_tcp_server(
+    app: AppHandle,
+    config: TcpServerConfig,
+) -> Result<TcpServerStatus, CommandError> {
+    let state = app.state::<TcpReceiptServerState>();
+    state
+        .start(app.clone(), config)
+        .await
+        .map_err(CommandError::from_message)
+}
+
+#[tauri::command]
+pub async fn stop_tcp_server(app: AppHandle) -> Result<TcpServerStatus, CommandError> {
+    let state = app.state::<TcpReceiptServerState>();
+    Ok(state.stop().await)
+}
+
+#[tauri::command]
+pub async fn get_tcp_server_status(app: AppHandle) -> Result<TcpServerStatus, CommandError> {
+    let state = app.state::<TcpReceiptServerState>();
+    Ok(state.status().await)
+}
+
+impl CommandError {
+    fn from_message(message: String) -> Self {
+        Self {
+            code: "command_error".into(),
+            message,
+        }
+    }
 }

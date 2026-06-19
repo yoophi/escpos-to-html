@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { isWidePrintChar, parseEscpos, parseInput, renderHtml, toHex } from './index'
+import { isWidePrintChar, parseEscpos, parseEscposBytes, parseInput, renderHtml, toHex } from './index'
 
 describe('parseInput', () => {
   it('decodes escaped text and command separator spaces', () => {
@@ -49,6 +49,53 @@ describe('parseInput', () => {
 })
 
 describe('parseEscpos', () => {
+  it('parses raw byte arrays without escaped text conversion', () => {
+    const bytes = [
+      0x1b,
+      0x40,
+      0x1b,
+      0x61,
+      0x01,
+      ...Array.from(new TextEncoder().encode('동네분식')),
+      0x0a,
+      0x1d,
+      0x56,
+      0x00,
+    ]
+    const result = parseEscposBytes(bytes)
+
+    expect(result.bytes).toEqual(bytes)
+    expect(result.lines[0].align).toBe('center')
+    expect(result.lines[0].spans[0].text).toBe('동네분식')
+    expect(result.events).toEqual([{ type: 'cut', label: 'Cut mode 0', offset: bytes.length - 3 }])
+  })
+
+  it('decodes EUC-KR Korean text from raw printer bytes', () => {
+    const bytes = [
+      0x1b,
+      0x40,
+      0x1b,
+      0x61,
+      0x01,
+      0xb5,
+      0xbf,
+      0xb3,
+      0xd7,
+      0xba,
+      0xd0,
+      0xbd,
+      0xc4,
+      0x0a,
+      0x1d,
+      0x56,
+      0x00,
+    ]
+    const result = parseEscposBytes(bytes, { textEncoding: 'euc-kr' })
+
+    expect(result.lines[0].spans[0].text).toBe('동네분식')
+    expect(result.events).toEqual([{ type: 'cut', label: 'Cut mode 0', offset: bytes.length - 3 }])
+  })
+
   it('parses common ESC/POS text styles and line alignment', () => {
     const result = parseEscpos(
       ['\\e@\\e a\\x01\\eE\\x01TITLE\\eE\\x00', '\\e a\\x00\\e-\\x02Under\\e-\\x00', '\\eM\\x01Small\\eM\\x02Tiny\\eM\\x00Base'].join('\n'),
@@ -89,6 +136,17 @@ describe('parseEscpos', () => {
     ])
   })
 
+  it('supports ESC ! print mode without leaking its mode byte as text', () => {
+    const result = parseEscpos('\\e a\\x01\\e!\\x30현금결제승인\\e!\\x00', 'escaped')
+
+    expect(result.lines[0].align).toBe('center')
+    expect(result.lines[0].spans[0]).toMatchObject({
+      text: '현금결제승인',
+      style: { width: 2, height: 2 },
+    })
+    expect(result.lines[0].spans.map((span) => span.text).join('')).not.toContain('0')
+  })
+
   it('handles right alignment, line trimming, carriage returns, and cut mode without feed arg', () => {
     const result = parseEscpos('\\e a\\x02Total\\r\\n\\gV\\x00\\n', 'escaped')
 
@@ -107,6 +165,22 @@ describe('parseEscpos', () => {
       '0x0002: 지원하지 않는 ESC 명령 0x5a',
       '0x0005: 지원하지 않는 GS 명령 0x5a',
     ])
+  })
+
+  it('consumes unsupported FS commands without leaking the command byte as text', () => {
+    const result = parseEscpos('\\x1cO현금결제승인', 'escaped')
+
+    expect(result.lines[0].spans.map((span) => span.text).join('')).toBe('현금결제승인')
+    expect(result.warnings).toEqual(['0x0000: 지원하지 않는 FS 명령 0x4f'])
+  })
+
+  it('supports FS character style commands used by East Asian printer modes', () => {
+    const result = parseEscpos('\\x1c!\\x0c확대', 'escaped')
+
+    expect(result.lines[0].spans[0]).toMatchObject({
+      text: '확대',
+      style: { width: 2, height: 2 },
+    })
   })
 
   it('warns and stops on incomplete commands', () => {
@@ -169,6 +243,9 @@ describe('format helpers', () => {
     expect(isWidePrintChar('가')).toBe(true)
     expect(isWidePrintChar('漢')).toBe(true)
     expect(isWidePrintChar('！')).toBe(true)
+    expect(isWidePrintChar('▶')).toBe(true)
+    expect(isWidePrintChar('└')).toBe(true)
+    expect(isWidePrintChar('─')).toBe(true)
     expect(isWidePrintChar('')).toBe(false)
   })
 })

@@ -38,13 +38,16 @@ export type HtmlRenderOptions = {
   wrapPlainTextSpans: boolean
 }
 
+export type EscposParseOptions = {
+  textEncoding?: string
+}
+
 const ESC = 0x1b
+const FS = 0x1c
 const GS = 0x1d
 const BEL = 0x07
 const LF = 0x0a
 const CR = 0x0d
-
-const decoder = new TextDecoder('utf-8', { fatal: false })
 
 const defaultStyle = (): TextStyle => ({
   bold: false,
@@ -138,6 +141,11 @@ export function parseInput(input: string, mode: InputMode): number[] {
 
 export function parseEscpos(input: string, mode: InputMode): ParseResult {
   const bytes = parseInput(input, mode)
+  return parseEscposBytes(bytes)
+}
+
+export function parseEscposBytes(bytes: number[], options: EscposParseOptions = {}): ParseResult {
+  const decoder = new TextDecoder(options.textEncoding ?? 'utf-8', { fatal: false })
   const lines: ReceiptLine[] = [{ align: 'left', spans: [] }]
   const events: ControlEvent[] = []
   const warnings: string[] = []
@@ -212,6 +220,18 @@ export function parseEscpos(input: string, mode: InputMode): ParseResult {
       if (command === 0x40) {
         reset()
         i += 1
+        continue
+      }
+
+      if (command === 0x21) {
+        const args = consume(i + 2, 1)
+        if (!args) break
+        style.bold = (args[0] & 0x08) !== 0
+        style.underline = (args[0] & 0x80) !== 0 ? 1 : 0
+        style.width = (args[0] & 0x20) !== 0 ? 2 : 1
+        style.height = (args[0] & 0x10) !== 0 ? 2 : 1
+        style.font = (args[0] & 0x01) !== 0 ? 'B' : 'A'
+        i += 2
         continue
       }
 
@@ -318,6 +338,42 @@ export function parseEscpos(input: string, mode: InputMode): ParseResult {
       continue
     }
 
+    if (byte === FS) {
+      const command = bytes[i + 1]
+      if (command === undefined) {
+        warn(i, 'FS 뒤에 명령 바이트가 없습니다.')
+        break
+      }
+
+      flushText()
+
+      if (command === 0x21) {
+        const args = consume(i + 2, 1)
+        if (!args) break
+        style.underline = (args[0] & 0x80) !== 0 ? 1 : 0
+        if ((args[0] & 0x04) !== 0) style.width = 2
+        if ((args[0] & 0x08) !== 0) style.height = 2
+        i += 2
+        continue
+      }
+
+      if (command === 0x26 || command === 0x2e) {
+        i += 1
+        continue
+      }
+
+      if (command === 0x43 || command === 0x2d) {
+        const args = consume(i + 2, 1)
+        if (!args) break
+        i += 2
+        continue
+      }
+
+      warn(i, `지원하지 않는 FS 명령 0x${command.toString(16).padStart(2, '0')}`)
+      i += 1
+      continue
+    }
+
     if (byte < 0x20 && byte !== 0x09) {
       warn(i, `제어 문자 0x${byte.toString(16).padStart(2, '0')} 무시`)
       continue
@@ -332,7 +388,7 @@ export function parseEscpos(input: string, mode: InputMode): ParseResult {
     lines.pop()
   }
 
-  return { lines, events, warnings, bytes }
+  return { lines, events, warnings, bytes: [...bytes] }
 }
 
 const escapeHtml = (value: string) =>
@@ -386,6 +442,9 @@ export function isWidePrintChar(char: string) {
 
   return (
     (codePoint >= 0x1100 && codePoint <= 0x11ff) ||
+    (codePoint >= 0x2190 && codePoint <= 0x21ff) ||
+    (codePoint >= 0x2500 && codePoint <= 0x257f) ||
+    (codePoint >= 0x25a0 && codePoint <= 0x25ff) ||
     (codePoint >= 0x2e80 && codePoint <= 0xa4cf) ||
     (codePoint >= 0xac00 && codePoint <= 0xd7a3) ||
     (codePoint >= 0xf900 && codePoint <= 0xfaff) ||
