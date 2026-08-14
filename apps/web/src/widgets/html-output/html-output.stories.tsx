@@ -1,4 +1,4 @@
-import { parseEscpos, renderHtml } from '@escpos-to-html/escpos'
+import { parseEscpos, renderHtml } from '@escpos-receipt-emulator/escpos'
 import type { Meta, StoryObj } from '@storybook/react-vite'
 import { samples } from '../../entities/sample'
 import { HtmlOutput } from '.'

@@ -1,4 +1,4 @@
-import { type ParseResult } from '@escpos-to-html/escpos';
+import { type ParseResult } from '@escpos-receipt-emulator/escpos';
 
 export type TcpServerStatus =
   | { status: 'stopped' }

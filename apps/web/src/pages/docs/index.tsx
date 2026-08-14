@@ -1,8 +1,8 @@
 import { Link } from 'react-router-dom'
 import { Braces, ReceiptText } from 'lucide-react'
 import { defaultSample } from '../../entities/sample'
-import { Button } from '@escpos-to-html/ui'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@escpos-to-html/ui'
+import { Button } from '@escpos-receipt-emulator/ui'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@escpos-receipt-emulator/ui'
 
 export function DocsPage() {
   return (

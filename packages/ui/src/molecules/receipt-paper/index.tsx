@@ -1,5 +1,5 @@
 import { type CSSProperties } from 'react'
-import { renderImageSvg, type ReceiptLine } from '@escpos-to-html/escpos'
+import { renderImageSvg, type ReceiptLine } from '@escpos-receipt-emulator/escpos'
 import { cn } from '../../lib/utils'
 import { PrintText } from '../../print-text'
 

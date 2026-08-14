@@ -1,4 +1,4 @@
-import { type InputMode } from '@escpos-to-html/escpos'
+import { type InputMode } from '@escpos-receipt-emulator/escpos'
 
 export type EscposSample = {
   id: string

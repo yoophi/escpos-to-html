@@ -1,1 +1,1 @@
-export const APP_NAME = 'ESC/POS to HTML';
+export const APP_NAME = 'ESC/POS Receipt Emulator';

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { listen } from '@tauri-apps/api/event';
-import { parseEscposBytes, renderHtml, toHex } from '@escpos-to-html/escpos';
+import { parseEscposBytes, renderHtml, toHex } from '@escpos-receipt-emulator/escpos';
 import { call } from '@/shared/api/tauri';
 import {
   defaultTcpServerConfig,

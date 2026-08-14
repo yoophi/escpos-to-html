@@ -8,7 +8,7 @@ import {
   type TextStyle,
   encodeBarcodeModules,
   isWidePrintChar,
-} from '@escpos-to-html/escpos'
+} from '@escpos-receipt-emulator/escpos'
 
 export type ReceiptFontId = 'd2coding' | 'default'
 

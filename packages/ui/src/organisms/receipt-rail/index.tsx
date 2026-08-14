@@ -1,6 +1,6 @@
 import { ReceiptCanvas, type ReceiptFontId } from '../../molecules/receipt-canvas'
 import { cn } from '../../lib/utils'
-import { type ReceiptLine } from '@escpos-to-html/escpos'
+import { type ReceiptLine } from '@escpos-receipt-emulator/escpos'
 
 export type ReceiptRailItem = {
   id: string

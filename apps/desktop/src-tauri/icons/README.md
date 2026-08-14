@@ -11,7 +11,7 @@
 1. 1024x1024 PNG 소스 준비 (예: `app-icon.png`).
 2. 아이콘 일괄 생성:
    ```bash
-   pnpm --filter @escpos/desktop tauri icon ./path/to/app-icon.png
+   pnpm --filter @escpos-receipt-emulator/desktop tauri icon ./path/to/app-icon.png
    ```
    다음 파일들이 이 디렉토리에 채워진다:
    - `32x32.png`, `128x128.png`, `128x128@2x.png`

@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
-import { parseEscposBytes, parseInput, renderHtml } from '@escpos-to-html/escpos'
+import { parseEscposBytes, parseInput, renderHtml } from '@escpos-receipt-emulator/escpos'
 import { type EscposSample, findSample } from '../../entities/sample'
 import { SampleSelector } from '../../widgets/sample-selector'
 import { EscposEditor } from '../../widgets/escpos-editor'

@@ -1,5 +1,5 @@
 import { type ReactNode } from 'react'
-import { MetricBadges } from '@escpos-to-html/ui'
+import { MetricBadges } from '@escpos-receipt-emulator/ui'
 
 type WorkbenchLayoutProps = {
   bytes: number

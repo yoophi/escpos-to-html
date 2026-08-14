@@ -1,12 +1,12 @@
 import { useState } from 'react'
 import { ChevronDown } from 'lucide-react'
-import { type ParseResult, toHex } from '@escpos-to-html/escpos'
-import { type InputMode } from '@escpos-to-html/escpos'
-import { SourceEditor } from '@escpos-to-html/ui'
-import { CodeBlock } from '@escpos-to-html/ui'
-import { PanelHeader } from '@escpos-to-html/ui'
-import { Button } from '@escpos-to-html/ui'
-import { Card, CardContent, CardDescription } from '@escpos-to-html/ui'
+import { type ParseResult, toHex } from '@escpos-receipt-emulator/escpos'
+import { type InputMode } from '@escpos-receipt-emulator/escpos'
+import { SourceEditor } from '@escpos-receipt-emulator/ui'
+import { CodeBlock } from '@escpos-receipt-emulator/ui'
+import { PanelHeader } from '@escpos-receipt-emulator/ui'
+import { Button } from '@escpos-receipt-emulator/ui'
+import { Card, CardContent, CardDescription } from '@escpos-receipt-emulator/ui'
 
 type EscposEditorProps = {
   input: string
