@@ -45,16 +45,14 @@ application
 
 domain
   ├─ receipt
-  ├─ escpos_document
   └─ errors
 
 infrastructure
   ├─ tcp
-  ├─ parsers
-  └─ renderers
+  └─ (기타 외부 시스템 adapter)
 ```
 
-TCP 서버와 Tauri 이벤트는 외부 입출력이므로 `adapter` 또는 `infrastructure`에 둔다. ESC/POS 파싱 결과와 영수증 세션 모델은 `domain`에 둔다.
+TCP 서버와 Tauri 이벤트는 외부 입출력이므로 `adapter` 또는 `infrastructure`에 둔다. ESC/POS 파싱은 `packages/escpos`가 담당하고 Rust domain에는 TCP 영수증 모델만 둔다.
 
 ## 데이터 흐름
 
@@ -65,9 +63,7 @@ TcpReceiptServer
   ↓ RawReceiptJob
 ReceiptAssembler
   ↓ ReceiptFrame
-EscPosParser
-  ↓ ParsedReceipt
-ReceiptStore
+receipt://received event
   ↓ tauri event
 React UI
   ↓
@@ -113,33 +109,7 @@ pub struct RawReceiptJob {
 }
 ```
 
-### ParsedReceipt
-
-프론트엔드로 전달할 최종 데이터.
-
-```rust
-pub struct ParsedReceipt {
-    pub id: ReceiptId,
-    pub status: ReceiptStatus,
-    pub received_at: DateTime,
-    pub client: TcpClientInfo,
-    pub bytes: Vec<u8>,
-    pub document: EscPosDocument,
-    pub html: String,
-    pub warnings: Vec<String>,
-    pub events: Vec<ControlEvent>,
-}
-```
-
-### ReceiptStatus
-
-```rust
-pub enum ReceiptStatus {
-    Receiving,
-    Parsed,
-    ParseFailed,
-}
-```
+파싱 결과(`ParseResult`)는 Rust domain이 아니라 `packages/escpos`에서 생성한다. Rust는 `ReceivedReceipt` 원본 바이트 payload만 발행한다.
 
 ## 영수증 단위 분리 전략
 
@@ -233,7 +203,7 @@ pub struct TcpServerConfig {
     pub host: String,
     pub port: u16,
     pub receipt_idle_timeout_ms: u64,
-    pub max_receipts: usize,
+    pub max_receipt_bytes: usize,
 }
 ```
 
@@ -243,7 +213,7 @@ pub struct TcpServerConfig {
 host = "127.0.0.1"
 port = 9100
 receipt_idle_timeout_ms = 800
-max_receipts = 200
+max_receipt_bytes = 1048576
 ```
 
 ### stop_tcp_server
@@ -264,32 +234,7 @@ async fn stop_tcp_server() -> Result<TcpServerStatus, CommandError>
 async fn get_tcp_server_status() -> Result<TcpServerStatus, CommandError>
 ```
 
-### list_receipts
-
-메모리에 보관 중인 영수증 목록을 반환한다.
-
-```rust
-#[tauri::command]
-async fn list_receipts() -> Result<Vec<ReceiptSummary>, CommandError>
-```
-
-### get_receipt
-
-특정 영수증 상세 데이터를 반환한다.
-
-```rust
-#[tauri::command]
-async fn get_receipt(id: String) -> Result<ParsedReceipt, CommandError>
-```
-
-### clear_receipts
-
-수신된 영수증 목록을 비운다.
-
-```rust
-#[tauri::command]
-async fn clear_receipts() -> Result<(), CommandError>
-```
+`list_receipts`, `get_receipt`, `clear_receipts`는 현재 메모리 저장소가 없으므로 구현하지 않는다. 프론트엔드가 이벤트 payload를 메모리에 보관하고 `clearReceipts`로 목록을 비운다.
 
 ## Tauri 이벤트 설계
 
@@ -309,30 +254,21 @@ async fn clear_receipts() -> Result<(), CommandError>
 
 ### receipt://received
 
-영수증 하나가 파싱 완료됐을 때 발생.
+영수증 하나가 수신 경계에 도달했을 때 발생. Rust는 원본 바이트를 전달하고 프론트엔드가 설정된 인코딩으로 파싱한다.
 
 ```json
 {
   "id": "receipt_20260619_000001",
   "receivedAt": "2026-06-19T10:00:00+09:00",
-  "byteLength": 405,
-  "lineCount": 13,
-  "warningCount": 0
+  "bytes": [27, 64, 72, 105],
+  "reason": "connection_closed",
+  "truncated": false
 }
 ```
 
-상세 데이터는 이벤트 payload에 모두 싣지 않고 `get_receipt(id)`로 조회한다. 대량 데이터 이벤트 전송을 피하기 위해서다.
+현재는 `max_receipt_bytes`로 이벤트 payload의 원본 크기를 제한한다. 별도 저장소를 도입할 때 payload 요약과 `get_receipt(id)` 조회 방식으로 전환할 수 있다.
 
-### receipt://failed
-
-파싱 실패 시 발생.
-
-```json
-{
-  "id": "receipt_20260619_000002",
-  "message": "invalid escpos input"
-}
-```
+`receipt://failed`는 현재 발행하지 않는다. 수신 상한 초과는 `truncated: true`와 `tcp://error`로 표시한다.
 
 ## 프론트엔드 화면 설계
 
@@ -445,7 +381,7 @@ Rust가 원본 바이트만 프론트엔드로 보내고, React가 `packages/esc
 - 목표는 데스크탑 앱의 TCP 수신과 프리뷰 UX 검증이다.
 - 파서 이식은 이후 안정화 단계에서 진행해도 된다.
 
-단, Rust domain에는 장기적으로 `EscPosParser` 포트를 유지한다. 나중에 Rust 파서로 교체할 수 있게 하기 위해서다.
+Rust는 TCP 수신과 영수증 경계만 담당한다. 파싱·렌더링은 `packages/escpos`(TypeScript)가 정본이며, Rust의 미사용 parser/renderer 스캐폴딩은 제거했다.
 
 ## 프론트엔드 수신 데이터 모델
 
@@ -460,24 +396,18 @@ type ReceivedReceipt = {
   }
   bytes: number[]
   reason: 'cut' | 'idle_timeout' | 'connection_closed'
+  truncated: boolean
 }
 ```
 
 프론트엔드는 다음 흐름으로 처리한다.
 
 ```ts
-const input = bytesToEscapedText(receipt.bytes)
-const parsed = parseEscpos(input, 'escaped')
+const parsed = parseEscposBytes(receipt.bytes, { textEncoding: 'euc-kr' })
 const html = renderHtml(parsed, { wrapPlainTextSpans: true })
 ```
 
-더 좋은 방식은 `packages/escpos`에 `parseEscposBytes(bytes: number[])` API를 추가하는 것이다. 그러면 escaped 문자열 변환 없이 직접 파싱할 수 있다.
-
-권장 추가 API:
-
-```ts
-parseEscposBytes(bytes: number[]): ParseResult
-```
+`textEncoding`은 수신기 설정(`utf-8` 또는 `euc-kr`)에서 선택하며, 기본값은 기존 POS 호환성을 위해 `euc-kr`이다.
 
 ## 영수증 목록 정책
 
@@ -499,15 +429,13 @@ parseEscposBytes(bytes: number[]): ParseResult
 대량 수신을 고려해 다음 제한을 둔다.
 
 ```text
-max_receipts = 200
-max_receipt_bytes = 1MB
+max_receipts = 200 (프론트엔드 목록 정책)
+max_receipt_bytes = 1MB (Rust 수신 버퍼 정책)
 ```
 
-`max_receipt_bytes` 초과 시:
+`max_receipt_bytes` 초과 시 수신 루프는 버퍼를 1MB로 제한하고 해당 payload의 `truncated`를 `true`로 설정한다. 초과분을 계속 누적하지 않으며 `tcp://error`로 사용자에게 알린다. UI는 보관된 앞부분을 표시하되 잘림 오류를 함께 보여준다.
 
-- 해당 receipt는 `ParseFailed` 처리
-- UI에 오류 표시
-- 원본 앞부분 일부만 보관하거나 전체 폐기
+향후 파싱 실패 저장 모델(`list_receipts`/`get_receipt`/`clear_receipts`)과 `receipt://failed` 이벤트는 별도 저장소를 도입할 때 결정한다. 현재 구현에서는 원본 바이트 이벤트를 정본으로 사용한다.
 
 ## 오류 처리
 
@@ -630,4 +558,3 @@ apps/desktop/src
 ```
 
 이 구조를 사용하면 web 앱과 desktop 앱이 같은 파서와 같은 영수증 렌더러를 공유할 수 있다.
-

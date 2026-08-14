@@ -14,7 +14,7 @@ flowchart LR
 
 - `domain/` — 엔티티, 값 객체, 도메인 오류. 외부 의존 없음.
 - `application/use_cases/` — 비즈니스 시나리오. ports를 통해서만 외부와 통신.
-- `application/ports/` — driven port 트레잇 (`EscPosParser`, `HtmlRenderer`).
+- `application/ports/` — driven port 트레잇 (`ReceiptServerControl`, `ReceiptEventPublisher`).
 - `infrastructure/` — driven 어댑터 (포트 구현).
 - `adapter/tauri_commands.rs` — driving 어댑터. 의존성 조립과 IPC 진입점.
 

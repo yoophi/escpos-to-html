@@ -1,5 +1,7 @@
 # 영수증 입력·렌더링 통합 설계
 
+> **Superseded** — 이 문서는 초기 HTTP ingest와 Rust 변환 파이프라인 초안입니다. 현재 구현의 기준은 [데스크톱 TCP 영수증 프리뷰 설계](./desktop-tcp-receipt-preview-design.md)입니다. HTTP ingest, iframe CSP, Rust `EscPosParser`/renderer 설계는 폐기되었습니다.
+
 - 작성일: 2026-05-19
 - 작성자: pyunghyuk.yoo@payhere.in
 - 상태: Draft (구현 전)

@@ -4,10 +4,11 @@ use serde::Serialize;
 use tauri::{AppHandle, Manager};
 
 use crate::adapter::tauri_receipt_events::TauriReceiptEventPublisher;
-use crate::application::use_cases::ConvertEscPosToHtml;
+use crate::application::use_cases::{
+    GetReceiptServerStatus, StartReceiptServer, StopReceiptServer,
+};
 use crate::domain::{TcpServerConfig, TcpServerStatus};
 use crate::infrastructure::TcpReceiptServerState;
-use crate::infrastructure::{NoopEscPosParser, SimpleHtmlRenderer};
 
 #[derive(Debug, Serialize)]
 pub struct CommandError {
@@ -25,48 +26,25 @@ impl From<crate::domain::DomainError> for CommandError {
 }
 
 #[tauri::command]
-pub fn ping() -> &'static str {
-    "pong"
-}
-
-/// ESC/POS 바이트 → HTML 변환. 스캐폴딩 단계에서는 stub 구현을 조립해 호출한다.
-#[tauri::command]
-pub fn convert_escpos_to_html(bytes: Vec<u8>) -> Result<String, CommandError> {
-    let uc = ConvertEscPosToHtml::new(NoopEscPosParser, SimpleHtmlRenderer);
-    let html = uc.execute(&bytes)?;
-    Ok(html.as_str().to_owned())
-}
-
-#[tauri::command]
 pub async fn start_tcp_server(
     app: AppHandle,
     config: TcpServerConfig,
 ) -> Result<TcpServerStatus, CommandError> {
     let state = app.state::<TcpReceiptServerState>();
     let publisher = Arc::new(TauriReceiptEventPublisher::new(app.clone()));
-    state
-        .start(config, publisher)
+    StartReceiptServer::execute(state.inner(), config, publisher)
         .await
-        .map_err(CommandError::from_message)
+        .map_err(Into::into)
 }
 
 #[tauri::command]
 pub async fn stop_tcp_server(app: AppHandle) -> Result<TcpServerStatus, CommandError> {
     let state = app.state::<TcpReceiptServerState>();
-    Ok(state.stop().await)
+    Ok(StopReceiptServer::execute(state.inner()).await)
 }
 
 #[tauri::command]
 pub async fn get_tcp_server_status(app: AppHandle) -> Result<TcpServerStatus, CommandError> {
     let state = app.state::<TcpReceiptServerState>();
-    Ok(state.status().await)
-}
-
-impl CommandError {
-    fn from_message(message: String) -> Self {
-        Self {
-            code: "command_error".into(),
-            message,
-        }
-    }
+    Ok(GetReceiptServerStatus::execute(state.inner()).await)
 }

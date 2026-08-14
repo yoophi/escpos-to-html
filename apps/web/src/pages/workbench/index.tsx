@@ -1,14 +1,14 @@
 import { useMemo, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { parseEscposBytes, parseInput, renderHtml } from '@escpos-to-html/escpos'
-import { type EscposSample, findSample } from '../../entities/sample'
-import { SampleSelector } from '../../widgets/sample-selector'
-import { EscposEditor } from '../../widgets/escpos-editor'
-import { ReceiptPreview } from '../../widgets/receipt-preview'
-import { HtmlOutput } from '../../widgets/html-output'
-import { ParsedDataOutput } from '../../widgets/parsed-data-output'
-import { ParseEvents } from '../../widgets/parse-events'
-import { WorkbenchLayout } from './ui/workbench-layout'
+import { type EscposSample, findSample } from '@/entities/sample'
+import { SampleSelector } from '@/widgets/sample-selector'
+import { EscposEditor } from '@/widgets/escpos-editor'
+import { ReceiptPreview } from '@/widgets/receipt-preview'
+import { HtmlOutput } from '@/widgets/html-output'
+import { ParsedDataOutput } from '@/widgets/parsed-data-output'
+import { ParseEvents } from '@/widgets/parse-events'
+import { WorkbenchLayout } from '@/pages/workbench/ui/workbench-layout'
 
 export function WorkbenchPage() {
   const { sampleId } = useParams()

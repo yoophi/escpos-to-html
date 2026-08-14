@@ -8,7 +8,9 @@
     "dev": "pnpm --filter web dev",
     "build": "pnpm -r build",
     "lint": "pnpm -r lint",
-    "test": "pnpm --filter @escpos-to-html/escpos test",
+    "test": "pnpm --filter @escpos-to-html/escpos test && pnpm --filter @escpos/desktop test",
+    "test:rust": "pnpm --filter @escpos/desktop test:rust",
+    "typecheck": "pnpm --filter @escpos-to-html/escpos build && pnpm --filter @escpos-to-html/ui build && pnpm --filter web exec tsc -b --force && pnpm --filter @escpos/desktop typecheck",
     "test:coverage": "pnpm --filter @escpos-to-html/escpos test:coverage",
     "preview": "pnpm --filter web preview"
   },

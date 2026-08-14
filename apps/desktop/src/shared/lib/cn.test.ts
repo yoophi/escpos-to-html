@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { cn } from './cn';
+import { cn } from '@escpos-to-html/ui';
 
 describe('cn', () => {
   it('merges classnames', () => {

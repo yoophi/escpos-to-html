@@ -1,3 +1,3 @@
-pub mod convert_escpos_to_html;
+pub mod receipt_server;
 
-pub use convert_escpos_to_html::ConvertEscPosToHtml;
+pub use receipt_server::{GetReceiptServerStatus, StartReceiptServer, StopReceiptServer};

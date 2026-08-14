@@ -1,5 +1,7 @@
 import { type ParseResult } from '@escpos-to-html/escpos';
 
+export type TextEncoding = 'utf-8' | 'euc-kr';
+
 export type TcpServerStatus =
   | { status: 'stopped' }
   | { status: 'starting' }
@@ -11,6 +13,8 @@ export type TcpServerConfig = {
   port: number;
   receiptIdleTimeoutMs: number;
   maxReceipts: number;
+  maxReceiptBytes: number;
+  textEncoding: TextEncoding;
 };
 
 export type ReceivedReceiptPayload = {
@@ -22,6 +26,7 @@ export type ReceivedReceiptPayload = {
   };
   bytes: number[];
   reason: 'cut' | 'idle_timeout' | 'connection_closed';
+  truncated: boolean;
 };
 
 export type ReceiptViewModel = ReceivedReceiptPayload & {
@@ -34,4 +39,6 @@ export const defaultTcpServerConfig: TcpServerConfig = {
   port: 9100,
   receiptIdleTimeoutMs: 800,
   maxReceipts: 200,
+  maxReceiptBytes: 1_048_576,
+  textEncoding: 'euc-kr',
 };

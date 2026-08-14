@@ -1,7 +1,7 @@
 import { parseEscpos } from '@escpos-to-html/escpos'
 import type { Meta, StoryObj } from '@storybook/react-vite'
-import { samples } from '../../entities/sample'
-import { ParsedDataOutput } from '.'
+import { samples } from '@/entities/sample'
+import { ParsedDataOutput } from '@/widgets/parsed-data-output'
 
 const result = parseEscpos(samples[1].input, 'escaped')
 

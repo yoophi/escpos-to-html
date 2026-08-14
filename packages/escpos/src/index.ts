@@ -332,9 +332,9 @@ export function parseEscposBytes(bytes: number[], options: EscposParseOptions = 
       if (command === 0x64) {
         const args = consume(i + 2, 1)
         if (!args) break
-        const count = Math.max(1, args[0])
+        const count = args[0]
         for (let n = 0; n < count; n += 1) newLine()
-        events.push({ type: 'feed', label: `Feed ${count} line${count > 1 ? 's' : ''}`, offset: i })
+        events.push({ type: 'feed', label: `Feed ${count} line${count === 1 ? '' : 's'}`, offset: i })
         i += 2
         continue
       }
