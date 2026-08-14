@@ -1,6 +1,6 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "ESC/POS Receipt Emulator",
+  "productName": "ESC POS Receipt Emulator",
   "version": "0.0.0",
   "identifier": "in.payhere.escpos-receipt-emulator",
   "build": {
@@ -12,7 +12,7 @@
   "app": {
     "windows": [
       {
-        "title": "ESC/POS Receipt Emulator",
+        "title": "ESC POS Receipt Emulator",
         "width": 1200,
         "height": 800,
         "minWidth": 800,
