@@ -9,7 +9,8 @@
   },
   "scripts": {
     "build": "tsc --noEmit",
-    "lint": "eslint src"
+    "lint": "eslint src",
+    "test": "vitest run"
   },
   "dependencies": {
     "@codemirror/state": "^6.6.0",
@@ -34,6 +35,7 @@
     "@storybook/react-vite": "10.4.6",
     "@types/react": "^19.2.14",
     "@types/react-dom": "^19.2.3",
-    "typescript": "~6.0.2"
+    "typescript": "~6.0.2",
+    "vitest": "^4.1.9"
   }
 }

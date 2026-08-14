@@ -1,16 +1,21 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { listen } from '@tauri-apps/api/event';
-import { parseEscposBytes, renderHtml, toHex } from '@escpos-receipt-emulator/escpos';
+import { toHex } from '@escpos-receipt-emulator/escpos';
 import { call } from '@/shared/api/tauri';
 import {
   defaultTcpServerConfig,
   type ReceivedReceiptPayload,
-  type ReceiptViewModel,
   type TcpServerConfig,
   type TcpServerStatus,
 } from '@/entities/receipt';
+import {
+  clearReceiptSession,
+  emptyReceiptSession,
+  receiveReceipt,
+  selectReceipt,
+  selectedReceipt,
+} from './receipt-session';
 
-const MAX_RENDERED_RECEIPTS = 200;
 const TCP_SERVER_CONFIG_STORAGE_KEY = 'escpos.desktop.tcpServerConfig.v1';
 
 const loadStoredConfig = (): TcpServerConfig => {
@@ -42,13 +47,17 @@ const loadStoredConfig = (): TcpServerConfig => {
 export function useReceiptReceiver() {
   const [config, setConfig] = useState<TcpServerConfig>(() => loadStoredConfig());
   const [status, setStatus] = useState<TcpServerStatus>({ status: 'stopped' });
-  const [receipts, setReceipts] = useState<ReceiptViewModel[]>([]);
-  const [selectedReceiptId, setSelectedReceiptId] = useState<string | null>(null);
+  const [session, setSession] = useState(emptyReceiptSession);
   const [error, setError] = useState<string | null>(null);
+  const maxReceiptsRef = useRef(config.maxReceipts);
 
   useEffect(() => {
     window.localStorage.setItem(TCP_SERVER_CONFIG_STORAGE_KEY, JSON.stringify(config));
   }, [config]);
+
+  useEffect(() => {
+    maxReceiptsRef.current = config.maxReceipts;
+  }, [config.maxReceipts]);
 
   useEffect(() => {
     let disposed = false;
@@ -68,14 +77,7 @@ export function useReceiptReceiver() {
       setStatus(event.payload);
     });
     const unlistenReceipt = listen<ReceivedReceiptPayload>('receipt://received', (event) => {
-      const parsed = parseEscposBytes(event.payload.bytes, { textEncoding: 'euc-kr' });
-      const receipt: ReceiptViewModel = {
-        ...event.payload,
-        parsed,
-        html: renderHtml(parsed, { wrapPlainTextSpans: true }),
-      };
-      setReceipts((current) => [receipt, ...current].slice(0, MAX_RENDERED_RECEIPTS));
-      setSelectedReceiptId((current) => current ?? receipt.id);
+      setSession((current) => receiveReceipt(current, event.payload, maxReceiptsRef.current));
     });
     const unlistenError = listen<string>('tcp://error', (event) => {
       setError(event.payload);
@@ -88,11 +90,6 @@ export function useReceiptReceiver() {
       void unlistenError.then((unlisten) => unlisten());
     };
   }, []);
-
-  const selectedReceipt = useMemo(
-    () => receipts.find((receipt) => receipt.id === selectedReceiptId) ?? receipts[0] ?? null,
-    [receipts, selectedReceiptId],
-  );
 
   const startServer = useCallback(async () => {
     setError(null);
@@ -117,17 +114,20 @@ export function useReceiptReceiver() {
   }, []);
 
   const clearReceipts = useCallback(() => {
-    setReceipts([]);
-    setSelectedReceiptId(null);
+    setSession(clearReceiptSession());
+  }, []);
+
+  const setSelectedReceiptId = useCallback((receiptId: string | null) => {
+    setSession((current) => selectReceipt(current, receiptId));
   }, []);
 
   return {
     config,
     setConfig,
     status,
-    receipts,
-    selectedReceipt,
-    selectedReceiptId,
+    receipts: session.receipts,
+    selectedReceipt: selectedReceipt(session),
+    selectedReceiptId: session.selectedReceiptId,
     setSelectedReceiptId,
     error,
     startServer,

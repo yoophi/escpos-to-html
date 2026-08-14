@@ -8,6 +8,7 @@ use tokio::net::{TcpListener, TcpStream};
 use tokio::sync::{oneshot, Mutex};
 use uuid::Uuid;
 
+use super::receipt_framer::ReceiptFramer;
 use crate::application::ports::ReceiptEventPublisher;
 use crate::domain::{
     ReceiptCompleteReason, ReceivedReceipt, TcpClientInfo, TcpServerConfig, TcpServerStatus,
@@ -152,7 +153,7 @@ async fn handle_client(
         peer_addr: peer_addr.to_string(),
         connected_at,
     };
-    let mut buffer = Vec::new();
+    let mut framer = ReceiptFramer::default();
     let mut chunk = [0_u8; 4096];
     let idle_timeout = Duration::from_millis(config.receipt_idle_timeout_ms);
 
@@ -162,15 +163,14 @@ async fn handle_client(
                 publish_receipt_if_needed(
                     &publisher,
                     &client,
-                    &mut buffer,
+                    &mut framer,
                     ReceiptCompleteReason::ConnectionClosed,
                 );
                 break;
             }
             Ok(Ok(size)) => {
-                buffer.extend_from_slice(&chunk[..size]);
-                while let Some(cut_end) = find_cut_command_end(&buffer) {
-                    let receipt_bytes = buffer.drain(..cut_end).collect::<Vec<_>>();
+                framer.append(&chunk[..size]);
+                for receipt_bytes in framer.drain_cut_frames() {
                     publish_receipt(
                         &publisher,
                         client.clone(),
@@ -184,7 +184,7 @@ async fn handle_client(
                 publish_receipt_if_needed(
                     &publisher,
                     &client,
-                    &mut buffer,
+                    &mut framer,
                     ReceiptCompleteReason::ConnectionClosed,
                 );
                 break;
@@ -193,7 +193,7 @@ async fn handle_client(
                 publish_receipt_if_needed(
                     &publisher,
                     &client,
-                    &mut buffer,
+                    &mut framer,
                     ReceiptCompleteReason::IdleTimeout,
                 );
             }
@@ -206,14 +206,12 @@ async fn handle_client(
 fn publish_receipt_if_needed(
     publisher: &Arc<dyn ReceiptEventPublisher>,
     client: &TcpClientInfo,
-    buffer: &mut Vec<u8>,
+    framer: &mut ReceiptFramer,
     reason: ReceiptCompleteReason,
 ) {
-    if buffer.is_empty() {
-        return;
+    if let Some(bytes) = framer.take_pending() {
+        publish_receipt(publisher, client.clone(), bytes, reason);
     }
-    let bytes = std::mem::take(buffer);
-    publish_receipt(publisher, client.clone(), bytes, reason);
 }
 
 fn publish_receipt(
@@ -230,35 +228,4 @@ fn publish_receipt(
         reason,
     };
     publisher.publish_receipt(receipt);
-}
-
-fn find_cut_command_end(bytes: &[u8]) -> Option<usize> {
-    let mut index = 0;
-    while index + 2 < bytes.len() {
-        if bytes[index] == 0x1d && bytes[index + 1] == 0x56 {
-            let mode = bytes[index + 2];
-            let command_len = if mode == 0x41 || mode == 0x42 { 4 } else { 3 };
-            if index + command_len <= bytes.len() {
-                return Some(index + command_len);
-            }
-            return None;
-        }
-        index += 1;
-    }
-    None
-}
-
-#[cfg(test)]
-mod tests {
-    use super::find_cut_command_end;
-
-    #[test]
-    fn finds_cut_command_end() {
-        assert_eq!(
-            find_cut_command_end(&[0x41, 0x1d, 0x56, 0x00, 0x42]),
-            Some(4)
-        );
-        assert_eq!(find_cut_command_end(&[0x1d, 0x56, 0x41, 0x10]), Some(4));
-        assert_eq!(find_cut_command_end(&[0x1d, 0x56]), None);
-    }
 }

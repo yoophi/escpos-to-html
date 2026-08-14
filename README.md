@@ -183,3 +183,5 @@ pnpm --filter @escpos-receipt-emulator/web storybook
 데스크탑 TCP 수신 앱 설계는 [docs/desktop-tcp-receipt-preview-design.md](docs/desktop-tcp-receipt-preview-design.md)에 정리되어 있습니다.
 
 QR 명령의 Epson 제약사항과 현재 프리뷰 구현의 차이는 [docs/20260814-escpos-qr-spec.md](docs/20260814-escpos-qr-spec.md)에 정리되어 있습니다.
+
+최근 변경 영역의 deepening 후보와 세부 검토는 [docs/architecture/README.md](docs/architecture/README.md)에 정리되어 있습니다.
