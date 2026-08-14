@@ -1,8 +1,11 @@
+import { useState } from 'react'
+import { ChevronDown } from 'lucide-react'
 import { type ParseResult, toHex } from '@escpos-to-html/escpos'
 import { type InputMode } from '@escpos-to-html/escpos'
 import { SourceEditor } from '@escpos-to-html/ui'
 import { CodeBlock } from '@escpos-to-html/ui'
 import { PanelHeader } from '@escpos-to-html/ui'
+import { Button } from '@escpos-to-html/ui'
 import { Card, CardContent, CardDescription } from '@escpos-to-html/ui'
 
 type EscposEditorProps = {
@@ -14,6 +17,8 @@ type EscposEditorProps = {
 }
 
 export function EscposEditor({ input, result, inputMode = 'escaped', textEncoding, onInputChange }: EscposEditorProps) {
+  const [bytesCollapsed, setBytesCollapsed] = useState(false)
+
   return (
     <Card className="overflow-hidden">
       <PanelHeader
@@ -27,8 +32,25 @@ export function EscposEditor({ input, result, inputMode = 'escaped', textEncodin
       </CardContent>
 
       <CardContent className="border-t pt-4">
-        <CardDescription className="mb-2">Decoded bytes</CardDescription>
-        <CodeBlock value={toHex(result.bytes)} fallback="00" />
+        <div className="mb-2 flex items-center justify-between">
+          <CardDescription>Decoded bytes</CardDescription>
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            className="size-7 text-muted-foreground"
+            aria-expanded={!bytesCollapsed}
+            aria-label={bytesCollapsed ? 'Expand decoded bytes' : 'Collapse decoded bytes'}
+            onClick={() => setBytesCollapsed((value) => !value)}
+          >
+            <ChevronDown
+              size={16}
+              aria-hidden="true"
+              className={`transition-transform ${bytesCollapsed ? '-rotate-90' : ''}`}
+            />
+          </Button>
+        </div>
+        {bytesCollapsed ? null : <CodeBlock value={toHex(result.bytes)} fallback="00" />}
       </CardContent>
     </Card>
   )

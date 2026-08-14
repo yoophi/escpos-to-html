@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { Braces } from 'lucide-react'
 import { type ParseResult } from '@escpos-to-html/escpos'
 import { PanelHeader } from '@escpos-to-html/ui'
@@ -9,11 +10,14 @@ type ParsedDataOutputProps = {
 }
 
 export function ParsedDataOutput({ data }: ParsedDataOutputProps) {
+  const [collapsed, setCollapsed] = useState(false)
   const json = JSON.stringify(data, null, 2)
 
   return (
-    <Card className="min-h-96">
+    <Card className={collapsed ? undefined : 'min-h-96'}>
       <PanelHeader
+        collapsed={collapsed}
+        onCollapsedChange={setCollapsed}
         title={
           <span className="flex items-center gap-2 text-base">
             <Braces size={17} aria-hidden="true" />
@@ -21,11 +25,13 @@ export function ParsedDataOutput({ data }: ParsedDataOutputProps) {
           </span>
         }
       />
-      <CardContent className="flex flex-1">
-        <ScrollArea className="h-96 w-full rounded-md border bg-muted/30 p-3">
-          <pre className="whitespace-pre-wrap text-sm">{json}</pre>
-        </ScrollArea>
-      </CardContent>
+      {collapsed ? null : (
+        <CardContent className="flex flex-1">
+          <ScrollArea className="h-96 w-full rounded-md border bg-muted/30 p-3">
+            <pre className="whitespace-pre-wrap text-sm">{json}</pre>
+          </ScrollArea>
+        </CardContent>
+      )}
     </Card>
   )
 }
