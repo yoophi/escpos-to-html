@@ -1,4 +1,4 @@
-import { ReceiptCanvas } from '../../molecules/receipt-canvas'
+import { ReceiptCanvas, type ReceiptFontId } from '../../molecules/receipt-canvas'
 import { cn } from '../../lib/utils'
 import { type ReceiptLine } from '@escpos-to-html/escpos'
 
@@ -13,10 +13,11 @@ type ReceiptRailProps = {
   receipts: readonly ReceiptRailItem[]
   selectedReceiptId?: string | null
   columns?: 21 | 42
+  font?: ReceiptFontId
   onSelectReceipt?: (receiptId: string) => void
 }
 
-export function ReceiptRail({ receipts, selectedReceiptId, columns = 42, onSelectReceipt }: ReceiptRailProps) {
+export function ReceiptRail({ receipts, selectedReceiptId, columns = 42, font = 'd2coding', onSelectReceipt }: ReceiptRailProps) {
   const cardWidth = columns * 10 + 28 + 48
 
   return (
@@ -45,7 +46,7 @@ export function ReceiptRail({ receipts, selectedReceiptId, columns = 42, onSelec
               {receipt.description ? <span className="shrink-0 text-muted-foreground">{receipt.description}</span> : null}
             </button>
             <div className="flex min-h-0 flex-1 items-start justify-center overflow-x-hidden overflow-y-auto p-6">
-              <ReceiptCanvas lines={receipt.lines} columns={columns} />
+              <ReceiptCanvas lines={receipt.lines} columns={columns} font={font} />
             </div>
           </article>
         )

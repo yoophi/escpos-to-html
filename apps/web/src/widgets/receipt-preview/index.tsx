@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { Clipboard } from 'lucide-react'
 import { type ParseResult } from '@escpos-to-html/escpos'
 import { PresetSegment, type PresetSegmentItem } from '@escpos-to-html/ui'
-import { ReceiptCanvas } from '@escpos-to-html/ui'
+import { ReceiptCanvas, receiptFontPresets, type ReceiptFontId } from '@escpos-to-html/ui'
 import { ReceiptStage } from '@escpos-to-html/ui'
 import { PanelHeader } from '@escpos-to-html/ui'
 import { Button } from '@escpos-to-html/ui'
@@ -33,6 +33,7 @@ type ReceiptPreviewProps = {
 
 export function ReceiptPreview({ result, html, preferredColumns }: ReceiptPreviewProps) {
   const [presetId, setPresetId] = useState<ReceiptPreviewPresetId>('pc-seller-42')
+  const [fontId, setFontId] = useState<ReceiptFontId>('d2coding')
   const preset = receiptPreviewPresets.find((item) => item.value === presetId) ?? receiptPreviewPresets[0]
 
   useEffect(() => {
@@ -53,6 +54,12 @@ export function ReceiptPreview({ result, html, preferredColumns }: ReceiptPrevie
         action={
           <div className="flex items-start gap-2">
             <PresetSegment
+              ariaLabel="Receipt font preset"
+              items={receiptFontPresets}
+              value={fontId}
+              onValueChange={setFontId}
+            />
+            <PresetSegment
               ariaLabel="Receipt width preset"
               items={receiptPreviewPresets}
               value={presetId}
@@ -67,7 +74,7 @@ export function ReceiptPreview({ result, html, preferredColumns }: ReceiptPrevie
 
       <CardContent className="flex min-h-0 flex-1 px-0 pb-0">
         <ReceiptStage>
-          <ReceiptCanvas lines={result.lines} columns={preset.columns} />
+          <ReceiptCanvas lines={result.lines} columns={preset.columns} font={fontId} />
         </ReceiptStage>
       </CardContent>
     </Card>

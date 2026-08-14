@@ -1,10 +1,43 @@
 import { useEffect, useMemo, useRef } from 'react'
 import { type ReceiptLine, type TextStyle, isWidePrintChar } from '@escpos-to-html/escpos'
 
+export type ReceiptFontId = 'd2coding' | 'default'
+
+export type ReceiptFontPreset = {
+  value: ReceiptFontId
+  label: string
+  description: string
+  fontFamily: string
+  letterSpacingEm?: number
+  verticalScale?: number
+}
+
+export const receiptFontPresets = [
+  {
+    value: 'd2coding',
+    label: 'D2Coding',
+    description: 'Korean monospace',
+    fontFamily:
+      '"D2Coding", "D2Coding ligature", "D2KodingLigature Nerd Font", "D2CodingLigature Nerd Font", "D2 Coding", "Nanum Gothic Coding", "Noto Sans Mono CJK KR", ui-monospace, monospace',
+    letterSpacingEm: -0.05,
+    verticalScale: 1.2,
+  },
+  {
+    value: 'default',
+    label: '기본',
+    description: 'Courier New',
+    fontFamily: '"Courier New", ui-monospace, monospace',
+  },
+] as const satisfies readonly ReceiptFontPreset[]
+
+const resolveFontPreset = (font: ReceiptFontId): ReceiptFontPreset =>
+  receiptFontPresets.find((preset) => preset.value === font) ?? receiptFontPresets[0]
+
 type ReceiptCanvasProps = {
   lines: ReceiptLine[]
   columns?: 21 | 42
   minHeight?: number
+  font?: ReceiptFontId
 }
 
 type CanvasToken = {
@@ -93,7 +126,14 @@ function paperWidth(columns: number) {
   return columns * cellWidth + horizontalPadding * 2
 }
 
-function drawReceipt(ctx: CanvasRenderingContext2D, canvasLines: CanvasLine[], columns: number, cssWidth: number, cssHeight: number) {
+function drawReceipt(
+  ctx: CanvasRenderingContext2D,
+  canvasLines: CanvasLine[],
+  columns: number,
+  cssWidth: number,
+  cssHeight: number,
+  fontPreset: ReceiptFontPreset,
+) {
   ctx.clearRect(0, 0, cssWidth, cssHeight)
   ctx.fillStyle = '#fffdf4'
   ctx.fillRect(0, 0, cssWidth, cssHeight)
@@ -119,10 +159,14 @@ function drawReceipt(ctx: CanvasRenderingContext2D, canvasLines: CanvasLine[], c
       const fontWeight = style.bold ? '700' : '400'
 
       ctx.save()
-      ctx.font = `${fontWeight} ${fontSize}px "Courier New", ui-monospace, monospace`
+      ctx.font = `${fontWeight} ${fontSize}px ${fontPreset.fontFamily}`
+      if ('letterSpacing' in ctx) {
+        ctx.letterSpacing = `${(fontSize * (fontPreset.letterSpacingEm ?? 0)).toFixed(2)}px`
+      }
       ctx.textBaseline = 'alphabetic'
       const measuredWidth = Math.max(1, ctx.measureText(token.text).width)
       const scaleX = tokenWidth / measuredWidth
+      const scaleY = fontPreset.verticalScale ?? 1
 
       if (style.inverted) {
         ctx.fillStyle = '#151515'
@@ -133,11 +177,11 @@ function drawReceipt(ctx: CanvasRenderingContext2D, canvasLines: CanvasLine[], c
       }
 
       ctx.translate(tokenX, baseline)
-      ctx.scale(scaleX, 1)
+      ctx.scale(scaleX, scaleY)
       ctx.fillText(token.text, 0, 0)
 
       if (style.underline > 0) {
-        ctx.scale(1 / scaleX, 1)
+        ctx.scale(1 / scaleX, 1 / scaleY)
         ctx.strokeStyle = style.inverted ? '#fffdf4' : '#181713'
         ctx.lineWidth = style.underline
         ctx.beginPath()
@@ -153,7 +197,7 @@ function drawReceipt(ctx: CanvasRenderingContext2D, canvasLines: CanvasLine[], c
   })
 }
 
-export function ReceiptCanvas({ lines, columns = 42, minHeight = 480 }: ReceiptCanvasProps) {
+export function ReceiptCanvas({ lines, columns = 42, minHeight = 480, font = 'd2coding' }: ReceiptCanvasProps) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null)
   const canvasLines = useMemo(() => buildCanvasLines(lines, columns), [lines, columns])
   const width = paperWidth(columns)
@@ -171,8 +215,8 @@ export function ReceiptCanvas({ lines, columns = 42, minHeight = 480 }: ReceiptC
     const ctx = canvas.getContext('2d')
     if (!ctx) return
     ctx.setTransform(pixelRatio, 0, 0, pixelRatio, 0, 0)
-    drawReceipt(ctx, canvasLines, columns, width, height)
-  }, [canvasLines, columns, height, width])
+    drawReceipt(ctx, canvasLines, columns, width, height, resolveFontPreset(font))
+  }, [canvasLines, columns, font, height, width])
 
   return (
     <canvas

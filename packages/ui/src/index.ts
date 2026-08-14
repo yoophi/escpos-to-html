@@ -3,7 +3,12 @@ export { StatBadge, type StatBadgeProps } from './atoms/stat-badge'
 export { MetricBadges } from './molecules/metric-badges'
 export { PanelHeader } from './molecules/panel-header'
 export { PresetSegment, type PresetSegmentItem } from './molecules/preset-segment'
-export { ReceiptCanvas } from './molecules/receipt-canvas'
+export {
+  ReceiptCanvas,
+  receiptFontPresets,
+  type ReceiptFontId,
+  type ReceiptFontPreset,
+} from './molecules/receipt-canvas'
 export { ReceiptPaper } from './molecules/receipt-paper'
 export { ReceiptRail, type ReceiptRailItem } from './organisms/receipt-rail'
 export { ReceiptStage } from './organisms/receipt-stage'

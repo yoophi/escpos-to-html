@@ -34,3 +34,9 @@ export const TwentyOneColumns: Story = {
     columns: 21,
   },
 }
+
+export const DefaultFont: Story = {
+  args: {
+    font: 'default',
+  },
+}
