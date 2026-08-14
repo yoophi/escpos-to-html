@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { isWidePrintChar, parseEscpos, parseEscposBytes, parseInput, renderHtml, toHex } from './index'
+import { encodeBarcodeModules, encodeCode128, encodeEan13, isWidePrintChar, parseEscpos, parseEscposBytes, parseInput, renderHtml, toHex } from './index'
 
 describe('parseInput', () => {
   it('decodes escaped text and command separator spaces', () => {
@@ -247,5 +247,187 @@ describe('format helpers', () => {
     expect(isWidePrintChar('└')).toBe(true)
     expect(isWidePrintChar('─')).toBe(true)
     expect(isWidePrintChar('')).toBe(false)
+  })
+})
+
+describe('barcode parsing', () => {
+  const text = (value: string) => Array.from(new TextEncoder().encode(value))
+
+  it('parses GS k format A with NUL-terminated data into a barcode line', () => {
+    const result = parseEscposBytes([0x1d, 0x6b, 2, ...text('880123456789'), 0x00, ...text('OK')])
+
+    expect(result.warnings).toEqual([])
+    expect(result.events).toEqual([
+      { type: 'barcode', label: 'EAN13 barcode: 880123456789', offset: 0, data: '880123456789', symbology: 'EAN13' },
+    ])
+    expect(result.lines[0].barcode).toEqual({
+      kind: '1d',
+      symbology: 'EAN13',
+      data: '880123456789',
+      heightDots: 162,
+      moduleWidth: 3,
+      hriPosition: 0,
+    })
+    expect(result.lines[1].spans[0].text).toBe('OK')
+  })
+
+  it('applies GS h/w/H settings to barcode lines and ignores out-of-range module width', () => {
+    const data = text('K123456789')
+    const result = parseEscposBytes([
+      0x1d, 0x48, 0x02,
+      0x1d, 0x68, 80,
+      0x1d, 0x77, 25,
+      0x1d, 0x6b, 0x49, data.length, ...data,
+    ])
+
+    expect(result.warnings).toEqual([])
+    expect(result.lines[0].barcode).toEqual({
+      kind: '1d',
+      symbology: 'CODE128',
+      data: 'K123456789',
+      heightDots: 80,
+      moduleWidth: 3,
+      hriPosition: 2,
+    })
+  })
+
+  it('emits a qr barcode line on print with accumulated settings', () => {
+    const data = text('hello')
+    const result = parseEscposBytes([
+      0x1d, 0x28, 0x6b, 3, 0, 49, 67, 6,
+      0x1d, 0x28, 0x6b, 3, 0, 49, 69, 50,
+      0x1d, 0x28, 0x6b, 3 + data.length, 0, 49, 80, 48, ...data,
+      0x1d, 0x28, 0x6b, 3, 0, 49, 81, 48,
+    ])
+
+    expect(result.lines[0].barcode).toEqual({
+      kind: 'qr',
+      symbology: 'QR Code',
+      data: 'hello',
+      moduleSize: 6,
+      errorCorrection: 'Q',
+    })
+  })
+
+  it('parses GS k format B with length-prefixed data', () => {
+    const data = text('{BNO.1842')
+    const result = parseEscposBytes([0x1d, 0x6b, 73, data.length, ...data])
+
+    expect(result.warnings).toEqual([])
+    expect(result.events).toEqual([
+      { type: 'barcode', label: 'CODE128 barcode: {BNO.1842', offset: 0, data: '{BNO.1842', symbology: 'CODE128' },
+    ])
+  })
+
+  it('labels unknown format B symbologies and escapes non-printable data bytes', () => {
+    const result = parseEscposBytes([0x1d, 0x6b, 200, 2, 0x41, 0x01])
+
+    expect(result.events[0].symbology).toBe('barcode m=200')
+    expect(result.events[0].data).toBe('A\\x01')
+  })
+
+  it('consumes barcode setting commands GS h/w/H/f without warnings', () => {
+    const result = parseEscposBytes([
+      0x1d, 0x48, 2,
+      0x1d, 0x66, 0,
+      0x1d, 0x68, 80,
+      0x1d, 0x77, 2,
+      ...text('T'),
+    ])
+
+    expect(result.warnings).toEqual([])
+    expect(result.lines[0].spans[0].text).toBe('T')
+  })
+
+  it('warns on unterminated format A data and invalid symbology', () => {
+    expect(parseEscposBytes([0x1d, 0x6b, 2, 0x31, 0x32]).warnings[0]).toContain('NUL')
+    expect(parseEscposBytes([0x1d, 0x6b, 10, 0x31, 0x00]).warnings[0]).toContain('잘못된 바코드 심볼로지')
+  })
+
+  it('parses the QR code GS ( k sequence and emits a qrcode event on print', () => {
+    const data = text('https://payhere.in')
+    const result = parseEscposBytes([
+      0x1d, 0x28, 0x6b, 4, 0, 49, 65, 50, 0,
+      0x1d, 0x28, 0x6b, 3, 0, 49, 67, 6,
+      0x1d, 0x28, 0x6b, 3, 0, 49, 69, 49,
+      0x1d, 0x28, 0x6b, 3 + data.length, 0, 49, 80, 48, ...data,
+      0x1d, 0x28, 0x6b, 3, 0, 49, 81, 48,
+    ])
+
+    expect(result.warnings).toEqual([])
+    expect(result.events).toEqual([
+      {
+        type: 'qrcode',
+        label: 'QR Code (model 2, module 6, EC M): https://payhere.in',
+        offset: 51,
+        data: 'https://payhere.in',
+        symbology: 'QR Code',
+      },
+    ])
+  })
+
+  it('warns when printing a QR code before storing data and on unsupported 2D code kinds', () => {
+    const printOnly = parseEscposBytes([0x1d, 0x28, 0x6b, 3, 0, 49, 81, 48])
+    expect(printOnly.warnings[0]).toContain('저장된 QR 데이터가 없습니다')
+
+    const pdf417 = parseEscposBytes([0x1d, 0x28, 0x6b, 3, 0, 48, 81, 48, ...text('AFTER')])
+    expect(pdf417.warnings[0]).toContain('cn=48')
+    expect(pdf417.lines[0].spans[0].text).toBe('AFTER')
+  })
+
+  it('parses the pc-seller getEscPosPrintBarcodeCommand sequence without warnings', () => {
+    const data = text('K123456789')
+    const result = parseEscposBytes([
+      0x0a,
+      0x1b, 0x61, 0x01,
+      0x1d, 0x77, 25,
+      0x1d, 0x68, 80,
+      0x1d, 0x48, 0x02,
+      0x1d, 0x6b, 0x49, data.length, ...data,
+      0x1b, 0x61, 0x00,
+    ])
+
+    expect(result.warnings).toEqual([])
+    expect(result.events).toEqual([
+      { type: 'barcode', label: 'CODE128 barcode: K123456789', offset: 13, data: 'K123456789', symbology: 'CODE128' },
+    ])
+  })
+})
+
+describe('barcode encoders', () => {
+  it('encodes CODE128 with start B, checksum, and stop', () => {
+    const modules = encodeCode128('K123456789')
+
+    expect(modules).not.toBeNull()
+    // start + 10 data + checksum = 12 codes * 11 modules + stop 13 modules
+    expect(modules!.length).toBe(12 * 11 + 13)
+    expect(modules!.slice(0, 2)).toEqual([1, 1])
+    expect(modules![modules!.length - 1]).toBe(1)
+  })
+
+  it('strips code set prefixes and unescapes double braces', () => {
+    expect(encodeCode128('{BNO.1842')!.length).toBe((1 + 7 + 1) * 11 + 13)
+    expect(encodeCode128('{{')!.length).toBe((1 + 1 + 1) * 11 + 13)
+    expect(encodeCode128('')).toBeNull()
+    expect(encodeCode128('한글')).toBeNull()
+  })
+
+  it('encodes EAN13 with guards and computed check digit', () => {
+    const modules = encodeEan13('880123456789')
+
+    expect(modules).not.toBeNull()
+    expect(modules!.length).toBe(95)
+    expect(modules!.slice(0, 3)).toEqual([1, 0, 1])
+    expect(modules!.slice(45, 50)).toEqual([0, 1, 0, 1, 0])
+    expect(modules!.slice(92)).toEqual([1, 0, 1])
+    expect(encodeEan13('8801234567893')).toEqual(modules)
+    expect(encodeEan13('8801234567890')).toBeNull()
+    expect(encodeEan13('12345')).toBeNull()
+  })
+
+  it('routes symbologies to encoders and returns null for unsupported ones', () => {
+    expect(encodeBarcodeModules('CODE128', 'ABC')).not.toBeNull()
+    expect(encodeBarcodeModules('EAN13', '880123456789')).not.toBeNull()
+    expect(encodeBarcodeModules('CODE39', 'ABC')).toBeNull()
   })
 })

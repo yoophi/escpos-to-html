@@ -1,11 +1,15 @@
+export { encodeBarcodeModules, encodeCode128, encodeEan13, type BarcodeModules } from './barcode'
+
 export type InputMode = 'escaped' | 'hex'
 
 export type Align = 'left' | 'center' | 'right'
 
 export type ControlEvent = {
-  type: 'cut' | 'drawer' | 'beep' | 'feed' | 'unknown'
+  type: 'cut' | 'drawer' | 'beep' | 'feed' | 'barcode' | 'qrcode' | 'unknown'
   label: string
   offset: number
+  data?: string
+  symbology?: string
 }
 
 export type TextStyle = {
@@ -22,9 +26,27 @@ export type ReceiptSpan = {
   style: TextStyle
 }
 
+export type ReceiptBarcode =
+  | {
+      kind: '1d'
+      symbology: string
+      data: string
+      heightDots: number
+      moduleWidth: number
+      hriPosition: 0 | 1 | 2 | 3
+    }
+  | {
+      kind: 'qr'
+      symbology: 'QR Code'
+      data: string
+      moduleSize: number
+      errorCorrection: 'L' | 'M' | 'Q' | 'H'
+    }
+
 export type ReceiptLine = {
   align: Align
   spans: ReceiptSpan[]
+  barcode?: ReceiptBarcode
 }
 
 export type ParseResult = {
@@ -69,6 +91,34 @@ const sameStyle = (a: TextStyle, b: TextStyle) =>
   a.font === b.font
 
 const isDefaultStyle = (style: TextStyle) => sameStyle(style, defaultStyle())
+
+// GS k 심볼로지: 포맷 A(0-6)와 포맷 B(65-71)는 동일 체계, 72+는 포맷 B 전용
+const BARCODE_SYMBOLOGIES: Record<number, string> = {
+  0: 'UPC-A',
+  1: 'UPC-E',
+  2: 'EAN13',
+  3: 'EAN8',
+  4: 'CODE39',
+  5: 'ITF',
+  6: 'CODABAR',
+  65: 'UPC-A',
+  66: 'UPC-E',
+  67: 'EAN13',
+  68: 'EAN8',
+  69: 'CODE39',
+  70: 'ITF',
+  71: 'CODABAR',
+  72: 'CODE93',
+  73: 'CODE128',
+  74: 'GS1-128',
+  75: 'GS1 DataBar Omnidirectional',
+  76: 'GS1 DataBar Truncated',
+  77: 'GS1 DataBar Limited',
+  78: 'GS1 DataBar Expanded',
+}
+
+const decodeBarcodeData = (data: number[]) =>
+  data.map((byte) => (byte >= 0x20 && byte <= 0x7e ? String.fromCharCode(byte) : `\\x${byte.toString(16).padStart(2, '0')}`)).join('')
 
 export function parseInput(input: string, mode: InputMode): number[] {
   if (mode === 'hex') {
@@ -152,6 +202,8 @@ export function parseEscposBytes(bytes: number[], options: EscposParseOptions = 
   let style = defaultStyle()
   let align: Align = 'left'
   let textBuffer: number[] = []
+  const barcodeSettings = { heightDots: 162, moduleWidth: 3, hriPosition: 0 as 0 | 1 | 2 | 3 }
+  const qr = { model: '2', moduleSize: 3, errorCorrection: 'L' as 'L' | 'M' | 'Q' | 'H', data: null as string | null }
 
   const currentLine = () => lines[lines.length - 1]
 
@@ -170,6 +222,15 @@ export function parseEscposBytes(bytes: number[], options: EscposParseOptions = 
 
   const newLine = () => {
     flushText()
+    lines.push({ align, spans: [] })
+  }
+
+  const emitBarcodeLine = (barcode: ReceiptBarcode) => {
+    flushText()
+    if (currentLine().spans.length > 0 || currentLine().barcode) {
+      lines.push({ align, spans: [] })
+    }
+    currentLine().barcode = barcode
     lines.push({ align, spans: [] })
   }
 
@@ -333,6 +394,134 @@ export function parseEscposBytes(bytes: number[], options: EscposParseOptions = 
         continue
       }
 
+      if (command === 0x68) {
+        const args = consume(i + 2, 1)
+        if (!args) break
+        if (args[0] >= 1) barcodeSettings.heightDots = args[0]
+        i += 2
+        continue
+      }
+
+      if (command === 0x77) {
+        const args = consume(i + 2, 1)
+        if (!args) break
+        // 스펙 범위(1-6) 밖 값은 프린터처럼 무시하고 이전 설정 유지
+        if (args[0] >= 1 && args[0] <= 6) barcodeSettings.moduleWidth = args[0]
+        i += 2
+        continue
+      }
+
+      if (command === 0x48) {
+        const args = consume(i + 2, 1)
+        if (!args) break
+        const position = args[0] >= 48 ? args[0] - 48 : args[0]
+        if (position >= 0 && position <= 3) barcodeSettings.hriPosition = position as 0 | 1 | 2 | 3
+        i += 2
+        continue
+      }
+
+      if (command === 0x66) {
+        const args = consume(i + 2, 1)
+        if (!args) break
+        i += 2
+        continue
+      }
+
+      if (command === 0x6b) {
+        const m = bytes[i + 2]
+        if (m === undefined) {
+          warn(i, '바코드 명령 인자가 부족합니다.')
+          break
+        }
+
+        if (m <= 6) {
+          let end = i + 3
+          while (end < bytes.length && bytes[end] !== 0x00) end += 1
+          if (end >= bytes.length) {
+            warn(i, '바코드 데이터가 NUL로 종료되지 않았습니다.')
+            break
+          }
+          const data = decodeBarcodeData(bytes.slice(i + 3, end))
+          const symbology = BARCODE_SYMBOLOGIES[m]
+          events.push({ type: 'barcode', label: `${symbology} barcode: ${data}`, offset: i, data, symbology })
+          emitBarcodeLine({ kind: '1d', symbology, data, ...barcodeSettings })
+          i = end
+          continue
+        }
+
+        if (m >= 65) {
+          const n = bytes[i + 3]
+          if (n === undefined) {
+            warn(i, '바코드 명령 인자가 부족합니다.')
+            break
+          }
+          const args = consume(i + 4, n)
+          if (!args) break
+          const data = decodeBarcodeData(args)
+          const symbology = BARCODE_SYMBOLOGIES[m] ?? `barcode m=${m}`
+          events.push({ type: 'barcode', label: `${symbology} barcode: ${data}`, offset: i, data, symbology })
+          emitBarcodeLine({ kind: '1d', symbology, data, ...barcodeSettings })
+          i += 3 + n
+          continue
+        }
+
+        warn(i, `잘못된 바코드 심볼로지 m=${m}`)
+        i += 2
+        continue
+      }
+
+      if (command === 0x28 && bytes[i + 2] === 0x6b) {
+        const header = consume(i + 3, 4)
+        if (!header) break
+        const [pL, pH, cn, fn] = header
+        const paramLength = pL + pH * 256 - 2
+        if (paramLength < 0) {
+          warn(i, '2D 코드 명령 길이가 잘못되었습니다.')
+          i += 6
+          continue
+        }
+        const params = consume(i + 7, paramLength)
+        if (!params) break
+
+        if (cn === 49) {
+          if (fn === 65 && params.length >= 1) {
+            qr.model = params[0] === 49 ? '1' : params[0] === 51 ? 'Micro' : '2'
+          } else if (fn === 67 && params.length >= 1) {
+            qr.moduleSize = params[0]
+          } else if (fn === 69 && params.length >= 1) {
+            qr.errorCorrection = params[0] === 49 ? 'M' : params[0] === 50 ? 'Q' : params[0] === 51 ? 'H' : 'L'
+          } else if (fn === 80) {
+            qr.data = decoder.decode(new Uint8Array(params.slice(1)))
+          } else if (fn === 81) {
+            if (qr.data === null) {
+              warn(i, '저장된 QR 데이터가 없습니다.')
+            } else {
+              events.push({
+                type: 'qrcode',
+                label: `QR Code (model ${qr.model}, module ${qr.moduleSize}, EC ${qr.errorCorrection}): ${qr.data}`,
+                offset: i,
+                data: qr.data,
+                symbology: 'QR Code',
+              })
+              emitBarcodeLine({
+                kind: 'qr',
+                symbology: 'QR Code',
+                data: qr.data,
+                moduleSize: qr.moduleSize,
+                errorCorrection: qr.errorCorrection,
+              })
+            }
+          } else if (fn !== 82) {
+            warn(i, `지원하지 않는 QR 함수 fn=${fn}`)
+          }
+        } else {
+          warn(i, `지원하지 않는 2D 코드 종류 cn=${cn}`)
+        }
+
+        i += 6 + paramLength
+        continue
+      }
+
       warn(i, `지원하지 않는 GS 명령 0x${command.toString(16).padStart(2, '0')}`)
       i += 1
       continue
@@ -384,7 +573,7 @@ export function parseEscposBytes(bytes: number[], options: EscposParseOptions = 
 
   flushText()
 
-  while (lines.length > 1 && lines[lines.length - 1].spans.length === 0) {
+  while (lines.length > 1 && lines[lines.length - 1].spans.length === 0 && !lines[lines.length - 1].barcode) {
     lines.pop()
   }
 
@@ -416,6 +605,10 @@ const styleToCss = (style: TextStyle) => {
 export function renderHtml(result: ParseResult, options: HtmlRenderOptions = { wrapPlainTextSpans: true }) {
   const lines = result.lines
     .map((line) => {
+      if (line.barcode) {
+        const { kind, symbology, data } = line.barcode
+        return `<div class="receipt-line align-${line.align} receipt-barcode" data-kind="${kind}" data-symbology="${escapeHtml(symbology)}" data-value="${escapeHtml(data)}">[${escapeHtml(symbology)}] ${escapeHtml(data)}</div>`
+      }
       const content = line.spans
         .map((span) => {
           const text = escapeHtml(span.text)

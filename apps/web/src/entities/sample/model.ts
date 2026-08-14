@@ -106,6 +106,19 @@ Tax                    1.45
 \e d\x02\gV\x00`,
   },
   {
+    id: 'barcode-receipt',
+    title: 'Barcode receipt',
+    description: '1D 바코드(GS k 포맷 A/B)와 QR 코드(GS ( k 시퀀스)가 이벤트로 파싱되는 샘플입니다.',
+    input: String.raw`\e@\e a\x01\eE\x01BARCODE LAB\eE\x00
+\e a\x00EAN13 / format A
+\gH\x02\gh\x50\gw\x02\gk\x02880123456789\x00
+CODE128 / format B
+\gk\x49\x09{BNO.1842
+QR code
+\g(k\x04\x001A2\x00\g(k\x03\x001C\x06\g(k\x03\x001E1\g(k\x15\x001P0https://payhere.in\g(k\x03\x001Q0
+\e d\x02\gV\x00`,
+  },
+  {
     id: 'style-lab',
     title: 'Style lab',
     description: '텍스트 스타일 상태가 span으로 어떻게 분리되는지 보기 위한 샘플입니다.',

@@ -1,5 +1,13 @@
 import { useEffect, useMemo, useRef } from 'react'
-import { type ReceiptLine, type TextStyle, isWidePrintChar } from '@escpos-to-html/escpos'
+import qrcode from 'qrcode-generator'
+import {
+  type BarcodeModules,
+  type ReceiptBarcode,
+  type ReceiptLine,
+  type TextStyle,
+  encodeBarcodeModules,
+  isWidePrintChar,
+} from '@escpos-to-html/escpos'
 
 export type ReceiptFontId = 'd2coding' | 'default'
 
@@ -47,11 +55,24 @@ type CanvasToken = {
   style: TextStyle
 }
 
+type CanvasBarcode = {
+  info: ReceiptBarcode
+  modules: BarcodeModules | null
+  qrGrid: boolean[][] | null
+  moduleWidthPx: number
+  width: number
+  barHeight: number
+  hriAbove: boolean
+  hriBelow: boolean
+}
+
 type CanvasLine = {
   align: ReceiptLine['align']
   tokens: CanvasToken[]
   columns: number
   heightScale: number
+  heightPx: number
+  barcode?: CanvasBarcode
 }
 
 const cellWidth = 10
@@ -59,6 +80,8 @@ const baseFontSize = 14
 const baseLineHeight = 30
 const horizontalPadding = 14
 const verticalPadding = 18
+const hriLineHeight = 14
+const barcodePaddingY = 8
 
 const styleKey = (style: TextStyle) =>
   [style.bold, style.underline, style.inverted, style.width, style.height, style.font].join(':')
@@ -77,10 +100,69 @@ function pushToken(tokens: CanvasToken[], text: string, startColumns: number, co
   tokens.push({ text, startColumns, columns, style })
 }
 
+function buildQrGrid(info: Extract<ReceiptBarcode, { kind: 'qr' }>): boolean[][] | null {
+  try {
+    const qr = qrcode(0, info.errorCorrection)
+    qr.addData(info.data)
+    qr.make()
+    const count = qr.getModuleCount()
+    return Array.from({ length: count }, (_, row) =>
+      Array.from({ length: count }, (_, col) => qr.isDark(row, col)),
+    )
+  } catch {
+    return null
+  }
+}
+
+function buildCanvasBarcode(info: ReceiptBarcode, contentWidth: number): { barcode: CanvasBarcode; heightPx: number } {
+  if (info.kind === 'qr') {
+    const qrGrid = buildQrGrid(info)
+    if (qrGrid) {
+      const count = qrGrid.length
+      const moduleWidthPx = Math.max(2, Math.min(info.moduleSize, Math.floor(contentWidth / count)))
+      const width = count * moduleWidthPx
+      return {
+        barcode: { info, modules: null, qrGrid, moduleWidthPx, width, barHeight: width, hriAbove: false, hriBelow: false },
+        heightPx: width + barcodePaddingY * 2,
+      }
+    }
+    const width = Math.min(contentWidth, 200)
+    return {
+      barcode: { info, modules: null, qrGrid: null, moduleWidthPx: 1, width, barHeight: 60, hriAbove: false, hriBelow: false },
+      heightPx: 60 + barcodePaddingY * 2,
+    }
+  }
+
+  const modules = encodeBarcodeModules(info.symbology, info.data)
+  const barHeight = Math.max(24, Math.min(160, Math.round(info.heightDots * 0.8)))
+  const hriAbove = info.hriPosition === 1 || info.hriPosition === 3
+  const hriBelow = info.hriPosition === 2 || info.hriPosition === 3
+
+  if (modules) {
+    const moduleWidthPx = Math.max(1, Math.min(info.moduleWidth, Math.floor(contentWidth / modules.length)))
+    const width = modules.length * moduleWidthPx
+    const heightPx = barcodePaddingY * 2 + barHeight + (hriAbove ? hriLineHeight : 0) + (hriBelow ? hriLineHeight : 0)
+    return { barcode: { info, modules, qrGrid: null, moduleWidthPx, width, barHeight, hriAbove, hriBelow }, heightPx }
+  }
+
+  const width = Math.min(contentWidth, 220)
+  return {
+    barcode: { info, modules: null, qrGrid: null, moduleWidthPx: 1, width, barHeight, hriAbove: false, hriBelow: false },
+    heightPx: barcodePaddingY * 2 + barHeight,
+  }
+}
+
 function buildCanvasLines(lines: ReceiptLine[], columns: number): CanvasLine[] {
   const canvasLines: CanvasLine[] = []
+  const contentWidth = columns * cellWidth
 
   lines.forEach((line) => {
+    if (line.barcode) {
+      const { barcode, heightPx } = buildCanvasBarcode(line.barcode, contentWidth)
+      canvasLines.push({ align: line.align, tokens: [], columns: 0, heightScale: 1, heightPx, barcode })
+      return
+    }
+
     let currentTokens: CanvasToken[] = []
     let cursorColumns = 0
     let currentHeightScale = 1
@@ -91,6 +173,7 @@ function buildCanvasLines(lines: ReceiptLine[], columns: number): CanvasLine[] {
         tokens: currentTokens,
         columns: cursorColumns,
         heightScale: currentHeightScale,
+        heightPx: baseLineHeight * currentHeightScale,
       })
       currentTokens = []
       cursorColumns = 0
@@ -119,11 +202,69 @@ function buildCanvasLines(lines: ReceiptLine[], columns: number): CanvasLine[] {
     }
   })
 
-  return canvasLines.length > 0 ? canvasLines : [{ align: 'left', tokens: [], columns: 1, heightScale: 1 }]
+  return canvasLines.length > 0
+    ? canvasLines
+    : [{ align: 'left', tokens: [], columns: 1, heightScale: 1, heightPx: baseLineHeight }]
 }
 
 function paperWidth(columns: number) {
   return columns * cellWidth + horizontalPadding * 2
+}
+
+function drawBarcode(
+  ctx: CanvasRenderingContext2D,
+  barcode: CanvasBarcode,
+  align: ReceiptLine['align'],
+  cssWidth: number,
+  y: number,
+  fontFamily: string,
+) {
+  const x =
+    align === 'center'
+      ? (cssWidth - barcode.width) / 2
+      : align === 'right'
+        ? cssWidth - horizontalPadding - barcode.width
+        : horizontalPadding
+  let top = y + barcodePaddingY
+
+  ctx.save()
+  ctx.fillStyle = '#181713'
+  ctx.font = `10px ${fontFamily}`
+  ctx.textAlign = 'center'
+  ctx.textBaseline = 'alphabetic'
+
+  if (barcode.qrGrid) {
+    const size = barcode.moduleWidthPx
+    barcode.qrGrid.forEach((row, rowIndex) => {
+      row.forEach((dark, colIndex) => {
+        if (dark) ctx.fillRect(x + colIndex * size, top + rowIndex * size, size, size)
+      })
+    })
+    ctx.restore()
+    return
+  }
+
+  if (barcode.modules) {
+    if (barcode.hriAbove) {
+      ctx.fillText(barcode.info.data, x + barcode.width / 2, top + 10)
+      top += hriLineHeight
+    }
+    barcode.modules.forEach((bit, index) => {
+      if (bit) ctx.fillRect(x + index * barcode.moduleWidthPx, top, barcode.moduleWidthPx, barcode.barHeight)
+    })
+    if (barcode.hriBelow) {
+      ctx.fillText(barcode.info.data, x + barcode.width / 2, top + barcode.barHeight + 11)
+    }
+    ctx.restore()
+    return
+  }
+
+  ctx.strokeStyle = '#181713'
+  ctx.lineWidth = 1
+  ctx.strokeRect(x + 0.5, top + 0.5, barcode.width - 1, barcode.barHeight - 1)
+  ctx.fillText(barcode.info.symbology, x + barcode.width / 2, top + barcode.barHeight / 2 - 2)
+  ctx.fillText(barcode.info.data.slice(0, 28), x + barcode.width / 2, top + barcode.barHeight / 2 + 10)
+  ctx.restore()
 }
 
 function drawReceipt(
@@ -141,7 +282,14 @@ function drawReceipt(
   let y = verticalPadding
 
   canvasLines.forEach((line) => {
-    const lineHeight = baseLineHeight * line.heightScale
+    const lineHeight = line.heightPx
+
+    if (line.barcode) {
+      drawBarcode(ctx, line.barcode, line.align, cssWidth, y, fontPreset.fontFamily)
+      y += lineHeight
+      return
+    }
+
     const baseline = y + lineHeight * 0.72
     const leadingColumns =
       line.align === 'center'
@@ -201,7 +349,7 @@ export function ReceiptCanvas({ lines, columns = 42, minHeight = 480, font = 'd2
   const canvasRef = useRef<HTMLCanvasElement | null>(null)
   const canvasLines = useMemo(() => buildCanvasLines(lines, columns), [lines, columns])
   const width = paperWidth(columns)
-  const height = Math.max(minHeight, canvasLines.reduce((total, line) => total + baseLineHeight * line.heightScale, verticalPadding * 2 + 40))
+  const height = Math.max(minHeight, canvasLines.reduce((total, line) => total + line.heightPx, verticalPadding * 2 + 40))
 
   useEffect(() => {
     const canvas = canvasRef.current
