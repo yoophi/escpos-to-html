@@ -1,7 +1,7 @@
 import { Navigate, Route, Routes } from 'react-router-dom'
-import { DocsPage } from '../pages/docs'
-import { WorkbenchPage } from '../pages/workbench'
-import { defaultSample } from '../entities/sample'
+import { DocsPage } from '@/pages/docs'
+import { WorkbenchPage } from '@/pages/workbench'
+import { defaultSample } from '@/entities/sample'
 
 export function App() {
   return (

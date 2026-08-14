@@ -1,6 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/react-vite'
-import { samples } from '../../entities/sample'
-import { SampleSelector } from '.'
+import { samples } from '@/entities/sample'
+import { SampleSelector } from '@/widgets/sample-selector'
 
 const meta = {
   title: 'Atomic Design/Organisms/SampleSelector',

@@ -1,16 +1,16 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { listen } from '@tauri-apps/api/event';
-import { parseEscposBytes, renderHtml, toHex } from '@escpos-to-html/escpos';
-import { call } from '@/shared/api/tauri';
+import { invoke } from '@tauri-apps/api/core';
+import { parseEscposBytes, renderHtml } from '@escpos-to-html/escpos';
 import {
   defaultTcpServerConfig,
   type ReceivedReceiptPayload,
   type ReceiptViewModel,
+  type TextEncoding,
   type TcpServerConfig,
   type TcpServerStatus,
 } from '@/entities/receipt';
 
-const MAX_RENDERED_RECEIPTS = 200;
 const TCP_SERVER_CONFIG_STORAGE_KEY = 'escpos.desktop.tcpServerConfig.v1';
 
 const loadStoredConfig = (): TcpServerConfig => {
@@ -24,6 +24,8 @@ const loadStoredConfig = (): TcpServerConfig => {
     const port = Number(parsed.port);
     const receiptIdleTimeoutMs = Number(parsed.receiptIdleTimeoutMs);
     const maxReceipts = Number(parsed.maxReceipts);
+    const maxReceiptBytes = Number(parsed.maxReceiptBytes);
+    const textEncoding: TextEncoding = parsed.textEncoding === 'utf-8' ? 'utf-8' : 'euc-kr';
 
     return {
       host: typeof parsed.host === 'string' && parsed.host.trim() ? parsed.host : defaultTcpServerConfig.host,
@@ -33,6 +35,9 @@ const loadStoredConfig = (): TcpServerConfig => {
           ? receiptIdleTimeoutMs
           : defaultTcpServerConfig.receiptIdleTimeoutMs,
       maxReceipts: Number.isInteger(maxReceipts) && maxReceipts > 0 ? maxReceipts : defaultTcpServerConfig.maxReceipts,
+      maxReceiptBytes:
+        Number.isInteger(maxReceiptBytes) && maxReceiptBytes > 0 ? maxReceiptBytes : defaultTcpServerConfig.maxReceiptBytes,
+      textEncoding,
     };
   } catch {
     return defaultTcpServerConfig;
@@ -45,17 +50,28 @@ export function useReceiptReceiver() {
   const [receipts, setReceipts] = useState<ReceiptViewModel[]>([]);
   const [selectedReceiptId, setSelectedReceiptId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const configRef = useRef(config);
+  configRef.current = config;
 
   useEffect(() => {
     window.localStorage.setItem(TCP_SERVER_CONFIG_STORAGE_KEY, JSON.stringify(config));
   }, [config]);
 
   useEffect(() => {
+    setReceipts((current) => current.slice(0, config.maxReceipts));
+  }, [config.maxReceipts]);
+
+  useEffect(() => {
+    if (selectedReceiptId === null || receipts.some((receipt) => receipt.id === selectedReceiptId)) return;
+    setSelectedReceiptId(receipts[0]?.id ?? null);
+  }, [receipts, selectedReceiptId]);
+
+  useEffect(() => {
     let disposed = false;
 
     async function syncInitialStatus() {
       try {
-        const nextStatus = await call<Record<string, never>, TcpServerStatus>('get_tcp_server_status');
+        const nextStatus = await invoke<TcpServerStatus>('get_tcp_server_status');
         if (!disposed) setStatus(nextStatus);
       } catch {
         if (!disposed) setStatus({ status: 'stopped' });
@@ -68,13 +84,14 @@ export function useReceiptReceiver() {
       setStatus(event.payload);
     });
     const unlistenReceipt = listen<ReceivedReceiptPayload>('receipt://received', (event) => {
-      const parsed = parseEscposBytes(event.payload.bytes, { textEncoding: 'euc-kr' });
+      const { maxReceipts, textEncoding } = configRef.current;
+      const parsed = parseEscposBytes(event.payload.bytes, { textEncoding });
       const receipt: ReceiptViewModel = {
         ...event.payload,
         parsed,
         html: renderHtml(parsed, { wrapPlainTextSpans: true }),
       };
-      setReceipts((current) => [receipt, ...current].slice(0, MAX_RENDERED_RECEIPTS));
+      setReceipts((current) => [receipt, ...current].slice(0, maxReceipts));
       setSelectedReceiptId((current) => current ?? receipt.id);
     });
     const unlistenError = listen<string>('tcp://error', (event) => {
@@ -97,7 +114,7 @@ export function useReceiptReceiver() {
   const startServer = useCallback(async () => {
     setError(null);
     try {
-      const nextStatus = await call<{ config: TcpServerConfig }, TcpServerStatus>('start_tcp_server', {
+      const nextStatus = await invoke<TcpServerStatus>('start_tcp_server', {
         config,
       });
       setStatus(nextStatus);
@@ -109,7 +126,7 @@ export function useReceiptReceiver() {
   const stopServer = useCallback(async () => {
     setError(null);
     try {
-      const nextStatus = await call<Record<string, never>, TcpServerStatus>('stop_tcp_server');
+      const nextStatus = await invoke<TcpServerStatus>('stop_tcp_server');
       setStatus(nextStatus);
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : 'TCP 서버를 중지할 수 없습니다.');
@@ -133,6 +150,5 @@ export function useReceiptReceiver() {
     startServer,
     stopServer,
     clearReceipts,
-    formatBytes: toHex,
   };
 }

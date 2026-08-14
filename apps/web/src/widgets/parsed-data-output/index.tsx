@@ -1,9 +1,7 @@
 import { useState } from 'react'
 import { Braces } from 'lucide-react'
 import { type ParseResult } from '@escpos-to-html/escpos'
-import { PanelHeader } from '@escpos-to-html/ui'
-import { Card, CardContent } from '@escpos-to-html/ui'
-import { ScrollArea } from '@escpos-to-html/ui'
+import { CollapsiblePanel, ScrollArea } from '@escpos-to-html/ui'
 
 type ParsedDataOutputProps = {
   data: ParseResult
@@ -14,24 +12,20 @@ export function ParsedDataOutput({ data }: ParsedDataOutputProps) {
   const json = JSON.stringify(data, null, 2)
 
   return (
-    <Card className={collapsed ? undefined : 'min-h-96'}>
-      <PanelHeader
-        collapsed={collapsed}
-        onCollapsedChange={setCollapsed}
-        title={
-          <span className="flex items-center gap-2 text-base">
-            <Braces size={17} aria-hidden="true" />
-            Parsed Data
-          </span>
-        }
-      />
-      {collapsed ? null : (
-        <CardContent className="flex flex-1">
-          <ScrollArea className="h-96 w-full rounded-md border bg-muted/30 p-3">
-            <pre className="whitespace-pre-wrap text-sm">{json}</pre>
-          </ScrollArea>
-        </CardContent>
-      )}
-    </Card>
+    <CollapsiblePanel
+      className={collapsed ? undefined : 'min-h-96'}
+      collapsed={collapsed}
+      onCollapsedChange={setCollapsed}
+      title={
+        <span className="flex items-center gap-2 text-base">
+          <Braces size={17} aria-hidden="true" />
+          Parsed Data
+        </span>
+      }
+    >
+      <ScrollArea className="h-96 w-full rounded-md border bg-muted/30 p-3">
+        <pre className="whitespace-pre-wrap text-sm">{json}</pre>
+      </ScrollArea>
+    </CollapsiblePanel>
   )
 }

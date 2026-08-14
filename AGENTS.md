@@ -16,21 +16,24 @@ ESC/POS 영수증 바이너리를 HTML로 변환하는 Tauri 2 데스크톱 앱.
 ```
 .
 ├── apps/
+│   ├── web/                  # 웹 워크벤치 (TypeScript 파서 정본)
 │   └── desktop/
 │       ├── src/                # FSD (React)
-│       │   ├── app/            # 부트스트랩, providers, 전역 스타일
+│       │   ├── app/            # 부트스트랩, 전역 스타일
 │       │   ├── pages/          # 라우트 화면
 │       │   ├── widgets/        # 페이지 구성 블록
 │       │   ├── features/       # 사용자 행위 단위
 │       │   ├── entities/       # 도메인 표현
-│       │   └── shared/         # ui(shadcn), lib, api, config
+│       │   └── shared/         # 테스트용 공통 코드
 │       └── src-tauri/
 │           └── src/            # Hexagonal (Rust)
 │               ├── domain/
 │               ├── application/{ports,use_cases}/
-│               ├── infrastructure/{parsers,renderers}/
+│               ├── infrastructure/tcp/
 │               └── adapter/tauri_commands.rs
-├── packages/                   # 향후 공유 패키지
+├── packages/
+│   ├── escpos/                # ESC/POS 파서·HTML 렌더러
+│   └── ui/                    # web/desktop 공유 UI
 ├── CLAUDE.md
 ├── AGENTS.md (이 파일)
 └── README.md
@@ -39,14 +42,14 @@ ESC/POS 영수증 바이너리를 HTML로 변환하는 Tauri 2 데스크톱 앱.
 ## 명령어 (루트에서 실행)
 
 ```bash
-pnpm install              # 의존성 설치
-pnpm dev                  # Tauri 개발 모드
-pnpm dev:web              # 프론트만 (브라우저)
-pnpm build                # 프로덕션 번들
-pnpm test                 # Vitest
-pnpm test:rust            # cargo test
-pnpm typecheck            # 전체 TS 타입체크
-pnpm format               # Prettier
+pnpm install                                      # 의존성 설치
+pnpm dev                                          # 웹 개발 모드
+pnpm --filter @escpos/desktop tauri dev          # Tauri 개발 모드
+pnpm build                                        # 프로덕션 번들
+pnpm --filter @escpos-to-html/escpos test         # ESC/POS Vitest
+pnpm --filter @escpos/desktop test:rust           # cargo test
+pnpm --filter web build                            # 웹 타입체크·번들
+pnpm --filter @escpos/desktop typecheck           # 데스크톱 타입체크
 ```
 
 ## 규칙 — Frontend (FSD)
@@ -55,8 +58,8 @@ pnpm format               # Prettier
 
 - 슬라이스 외부에서는 슬라이스의 `index.ts` 배럴만 import. 내부 파일 직접 import 금지.
 - 동일 레이어 간 cross-import 금지.
-- 비즈니스 로직은 Rust(application)로 위임. FE는 UI/IPC 호출 담당.
-- shadcn/ui 컴포넌트는 `src/shared/ui/`에 위치 (`components.json`).
+- ESC/POS 파싱과 HTML 렌더링은 `packages/escpos`(TypeScript)가 정본이며, Rust는 TCP 수신과 이벤트 발행을 담당한다.
+- 공유 shadcn/ui 컴포넌트는 `packages/ui/`에 위치하며 앱에서는 패키지 public API를 사용한다.
 - 경로 별칭: `@/...` → `src/...`.
 
 ## 규칙 — Native (Hexagonal)
@@ -84,7 +87,7 @@ flowchart LR
 3. **유스케이스** 작성: `application/use_cases/<case>.rs` (포트 제네릭 주입, `#[cfg(test)]`로 stub 단위 테스트)
 4. **구현체** 작성: `infrastructure/<area>/<impl>.rs`에서 포트 구현
 5. **IPC 노출**: `adapter/tauri_commands.rs`에 `#[tauri::command]` 함수 + `lib.rs::run` 등록
-6. **Frontend**: `shared/api/tauri.ts::call()`로 호출, 결과를 entities/features에 반영
+6. **Frontend**: `@tauri-apps/api/core`의 `invoke()`로 호출, 결과를 entities/features에 반영
 7. **테스트**: `cargo test` + `vitest`
 
 ## 코드 스타일

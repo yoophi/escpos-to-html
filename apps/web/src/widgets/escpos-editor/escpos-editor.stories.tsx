@@ -1,7 +1,7 @@
 import { parseEscpos } from '@escpos-to-html/escpos'
 import type { Meta, StoryObj } from '@storybook/react-vite'
-import { samples } from '../../entities/sample'
-import { EscposEditor } from '.'
+import { samples } from '@/entities/sample'
+import { EscposEditor } from '@/widgets/escpos-editor'
 
 const input = samples[2].input
 

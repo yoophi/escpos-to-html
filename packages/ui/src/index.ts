@@ -2,6 +2,7 @@ export { CodeBlock } from './atoms/code-block'
 export { StatBadge, type StatBadgeProps } from './atoms/stat-badge'
 export { MetricBadges } from './molecules/metric-badges'
 export { PanelHeader } from './molecules/panel-header'
+export { CollapsiblePanel } from './molecules/collapsible-panel'
 export { PresetSegment, type PresetSegmentItem } from './molecules/preset-segment'
 export {
   ReceiptCanvas,
@@ -21,3 +22,4 @@ export { Checkbox } from './shadcn/checkbox'
 export { ScrollArea, ScrollBar } from './shadcn/scroll-area'
 export { Separator } from './shadcn/separator'
 export { Textarea } from './shadcn/textarea'
+export { cn } from './lib/utils'

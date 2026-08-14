@@ -1,6 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/react-vite'
 import { Card, CardContent } from '@escpos-to-html/ui'
-import { WorkbenchLayout } from './workbench-layout'
+import { WorkbenchLayout } from '@/pages/workbench/ui/workbench-layout'
 
 function PlaceholderPanel({ label }: { label: string }) {
   return (

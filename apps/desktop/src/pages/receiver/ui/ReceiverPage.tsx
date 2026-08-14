@@ -17,7 +17,6 @@ export function ReceiverPage() {
     startServer,
     stopServer,
     clearReceipts,
-    formatBytes,
   } = useReceiptReceiver();
 
   return (
@@ -52,7 +51,7 @@ export function ReceiverPage() {
                 selectedReceiptId={selectedReceiptId}
                 onSelectReceipt={setSelectedReceiptId}
               />
-              <ReceiptDetailPanels receipt={selectedReceipt} formatBytes={formatBytes} />
+              <ReceiptDetailPanels receipt={selectedReceipt} />
             </div>
           )}
         </section>

@@ -1,10 +1,8 @@
 import { useState } from 'react'
 import { AlertTriangle } from 'lucide-react'
 import { type ControlEvent } from '@escpos-to-html/escpos'
-import { PanelHeader } from '@escpos-to-html/ui'
 import { Badge } from '@escpos-to-html/ui'
-import { Card, CardContent } from '@escpos-to-html/ui'
-import { Separator } from '@escpos-to-html/ui'
+import { CollapsiblePanel, Separator } from '@escpos-to-html/ui'
 
 type ParseEventsProps = {
   events: ControlEvent[]
@@ -15,10 +13,7 @@ export function ParseEvents({ events, warnings }: ParseEventsProps) {
   const [collapsed, setCollapsed] = useState(false)
 
   return (
-    <Card>
-      <PanelHeader title="Parsed controls" collapsed={collapsed} onCollapsedChange={setCollapsed} />
-      {collapsed ? null : (
-        <CardContent>
+    <CollapsiblePanel title="Parsed controls" collapsed={collapsed} onCollapsedChange={setCollapsed}>
           {events.length === 0 ? (
             <p className="text-sm text-muted-foreground">No printer control events detected.</p>
           ) : (
@@ -43,8 +38,6 @@ export function ParseEvents({ events, warnings }: ParseEventsProps) {
               ))}
             </div>
           )}
-        </CardContent>
-      )}
-    </Card>
+    </CollapsiblePanel>
   )
 }

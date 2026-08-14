@@ -1,4 +1,4 @@
-import { type EscposSample, samples } from '../../entities/sample'
+import { type EscposSample, samples } from '@/entities/sample'
 import { Button } from '@escpos-to-html/ui'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@escpos-to-html/ui'
 import { ScrollArea, ScrollBar } from '@escpos-to-html/ui'

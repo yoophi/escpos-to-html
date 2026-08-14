@@ -1,12 +1,12 @@
 import { type ReactNode } from 'react';
+import { toHex } from '@escpos-to-html/escpos';
 import { type ReceiptViewModel } from '@/entities/receipt';
 
 type ReceiptDetailPanelsProps = {
   receipt: ReceiptViewModel | null;
-  formatBytes: (bytes: number[]) => string;
 };
 
-export function ReceiptDetailPanels({ receipt, formatBytes }: ReceiptDetailPanelsProps) {
+export function ReceiptDetailPanels({ receipt }: ReceiptDetailPanelsProps) {
   if (!receipt) return null;
 
   return (
@@ -15,7 +15,7 @@ export function ReceiptDetailPanels({ receipt, formatBytes }: ReceiptDetailPanel
         <pre>{JSON.stringify(receipt.parsed, null, 2)}</pre>
       </InfoPanel>
       <InfoPanel title="Decoded Bytes">
-        <pre>{formatBytes(receipt.bytes)}</pre>
+        <pre>{toHex(receipt.bytes)}</pre>
       </InfoPanel>
       <InfoPanel title="HTML">
         <pre>{receipt.html}</pre>

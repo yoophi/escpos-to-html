@@ -3,7 +3,6 @@
 FSD 최상위 레이어. 앱 부트스트랩, 전역 프로바이더, 라우팅, 전역 스타일을 둔다.
 
 - `App.tsx` — 루트 컴포넌트
-- `providers/` — 전역 컨텍스트 (Theme, QueryClient 등)
 - `styles/` — Tailwind 진입 CSS 및 토큰
 - `router/` — (필요 시) 라우팅 정의
 

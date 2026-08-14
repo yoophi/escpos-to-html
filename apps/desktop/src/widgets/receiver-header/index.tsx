@@ -1,6 +1,6 @@
 import { Server, Square } from 'lucide-react';
-import { Button } from '@escpos-to-html/ui';
-import { type TcpServerConfig, type TcpServerStatus } from '@/entities/receipt';
+import { Button, PresetSegment } from '@escpos-to-html/ui';
+import { type TextEncoding, type TcpServerConfig, type TcpServerStatus } from '@/entities/receipt';
 
 type ReceiverHeaderProps = {
   config: TcpServerConfig;
@@ -34,7 +34,10 @@ export function ReceiverHeader({ config, status, error, onConfigChange, onStart,
             <input
               className="h-10 w-36 rounded-md border bg-background px-3"
               value={config.host}
-              onChange={(event) => onConfigChange((current) => ({ ...current, host: event.target.value }))}
+              onChange={(event) => {
+                const host = event.target.value;
+                onConfigChange((current) => ({ ...current, host }));
+              }}
               disabled={isListening}
             />
           </label>
@@ -46,15 +49,61 @@ export function ReceiverHeader({ config, status, error, onConfigChange, onStart,
               min={1}
               max={65535}
               value={config.port}
-              onChange={(event) =>
+              onChange={(event) => {
+                const port = Number(event.target.value);
                 onConfigChange((current) => ({
                   ...current,
-                  port: Number(event.target.value),
-                }))
-              }
+                  port,
+                }));
+              }}
               disabled={isListening}
             />
           </label>
+          <label className="grid gap-1 text-sm">
+            <span className="text-muted-foreground">Max receipts</span>
+            <input
+              className="h-10 w-28 rounded-md border bg-background px-3"
+              type="number"
+              min={1}
+              value={config.maxReceipts}
+              onChange={(event) => {
+                const maxReceipts = Number(event.target.value);
+                onConfigChange((current) => ({
+                  ...current,
+                  maxReceipts,
+                }));
+              }}
+            />
+          </label>
+          <label className="grid gap-1 text-sm">
+            <span className="text-muted-foreground">Max bytes</span>
+            <input
+              className="h-10 w-28 rounded-md border bg-background px-3"
+              type="number"
+              min={1}
+              value={config.maxReceiptBytes}
+              onChange={(event) => {
+                const maxReceiptBytes = Number(event.target.value);
+                onConfigChange((current) => ({
+                  ...current,
+                  maxReceiptBytes,
+                }));
+              }}
+              disabled={isListening}
+            />
+          </label>
+          <div className="grid gap-1 text-sm">
+            <span className="text-muted-foreground">Text encoding</span>
+            <PresetSegment<TextEncoding>
+              ariaLabel="Text encoding"
+              items={[
+                { value: 'utf-8', label: 'UTF-8' },
+                { value: 'euc-kr', label: 'EUC-KR' },
+              ]}
+              value={config.textEncoding}
+              onValueChange={(textEncoding) => onConfigChange((current) => ({ ...current, textEncoding }))}
+            />
+          </div>
           <Button type="button" onClick={onStart} disabled={isListening}>
             <Server aria-hidden="true" />
             Start

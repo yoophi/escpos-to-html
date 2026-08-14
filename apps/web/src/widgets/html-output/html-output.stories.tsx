@@ -1,7 +1,7 @@
 import { parseEscpos, renderHtml } from '@escpos-to-html/escpos'
 import type { Meta, StoryObj } from '@storybook/react-vite'
-import { samples } from '../../entities/sample'
-import { HtmlOutput } from '.'
+import { samples } from '@/entities/sample'
+import { HtmlOutput } from '@/widgets/html-output'
 
 const result = parseEscpos(samples[1].input, 'escaped')
 

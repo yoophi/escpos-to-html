@@ -14,8 +14,8 @@ ESC/POS 영수증 바이너리를 HTML로 변환하는 Tauri 2 데스크톱 앱.
 
 | 목적 | 명령 |
 | --- | --- |
-| 개발 (Tauri) | `pnpm dev` |
-| 개발 (웹만) | `pnpm dev:web` |
+| 개발 (웹만) | `pnpm dev` |
+| 개발 (Tauri) | `pnpm --filter @escpos/desktop tauri dev` |
 | 프로덕션 빌드 | `pnpm build` |
 | 프론트 테스트 | `pnpm test` (Vitest) |
 | Rust 테스트 | `pnpm test:rust` (cargo test) |
@@ -45,8 +45,8 @@ app → pages → widgets → features → entities → shared
 
 1. 슬라이스 외부에서는 슬라이스의 **public API(`index.ts` 배럴)** 만 import한다. 내부 파일 직접 import 금지.
 2. 같은 레이어 슬라이스끼리는 import 금지 (예: `features/a`가 `features/b`를 import할 수 없다).
-3. 비즈니스 로직은 가능한 한 Rust(application 레이어)로 위임. FE는 UI/입력 검증/IPC 호출만.
-4. shadcn/ui 컴포넌트는 `src/shared/ui/`에 둔다 (`components.json`에 매핑됨).
+3. ESC/POS 파싱과 렌더링은 `packages/escpos`(TypeScript)가 정본이다. FE는 UI/입력 검증/IPC 호출을 담당하고, Rust(application 레이어)는 TCP 수신·영수증 경계·이벤트 발행을 담당한다.
+4. 공유 shadcn/ui 컴포넌트는 `packages/ui/`에 두고 앱에서는 패키지 public API를 사용한다.
 5. 경로 별칭: `@/...` → `src/...`.
 6. 새 슬라이스를 만들 땐 `index.ts` 배럴을 함께 만들어 노출 표면을 좁힌다.
 
@@ -89,10 +89,11 @@ flowchart LR
    - IPC 노출은 `adapter::tauri_commands`에 `#[tauri::command]` 함수로 등록 + `lib.rs::run`의 `invoke_handler!`에 추가.
 6. 오류는 `domain::DomainError`로 통일하고, IPC 경계에서 `adapter::CommandError`로 매핑한다.
 7. Tauri plugin/file system 접근 등 OS 의존은 반드시 `infrastructure`에 격리.
+8. 장수명 TCP 서버의 이벤트 publisher는 수명과 공유 소유권 때문에 `Arc<dyn ReceiptEventPublisher>`를 사용한다. 이 포트의 트레잇 객체 주입은 제네릭 포트 주입 규칙의 예외다.
 
 ### 테스트
 
-- 유스케이스는 stub 포트로 단위 테스트 (예: `convert_escpos_to_html.rs` 하단의 `#[cfg(test)]`).
+- 유스케이스는 stub 포트로 단위 테스트 (예: `receipt_server.rs` 하단의 `#[cfg(test)]`).
 - `infrastructure` 어댑터는 통합 테스트로 검증.
 
 ## 코드 스타일
@@ -114,7 +115,7 @@ flowchart LR
 ## 자주 가는 위치
 
 - Frontend 엔트리: `apps/desktop/src/main.tsx`
-- 라우트 진입: `apps/desktop/src/pages/converter/ui/ConverterPage.tsx`
+- 라우트 진입: `apps/desktop/src/pages/receiver/ui/ReceiverPage.tsx`
 - Tauri 진입: `apps/desktop/src-tauri/src/lib.rs`
 - IPC 커맨드: `apps/desktop/src-tauri/src/adapter/tauri_commands.rs`
 - Tauri 설정: `apps/desktop/src-tauri/tauri.conf.json`

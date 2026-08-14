@@ -190,11 +190,11 @@ describe('parseEscpos', () => {
     expect(parseEscpos('\\gV\\x41', 'escaped').warnings).toEqual(['0x0000: 컷 명령 인자가 부족합니다.'])
   })
 
-  it('normalizes feed zero to one blank line and merges adjacent same-style spans', () => {
+  it('treats ESC d 0 as a zero-line feed and merges adjacent same-style spans', () => {
     const result = parseEscpos('A\\e@\\e d\\x00B', 'escaped')
 
-    expect(result.lines.map((line) => line.spans.map((span) => span.text).join(''))).toEqual(['A', 'B'])
-    expect(result.events).toEqual([{ type: 'feed', label: 'Feed 1 line', offset: 3 }])
+    expect(result.lines.map((line) => line.spans.map((span) => span.text).join(''))).toEqual(['AB'])
+    expect(result.events).toEqual([{ type: 'feed', label: 'Feed 0 lines', offset: 3 }])
     expect(parseEscpos('AB', 'escaped').lines[0].spans).toEqual([
       {
         text: 'AB',

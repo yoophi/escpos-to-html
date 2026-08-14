@@ -82,8 +82,11 @@ type ParseResult = {
 type ReceiptLine = {
   align: 'left' | 'center' | 'right'
   spans: ReceiptSpan[]
+  barcode?: ReceiptBarcode
 }
 ```
+
+`ReceiptBarcode`는 1D 바코드 또는 QR 데이터를 표현하며, 바코드가 있는 줄은 프리뷰에서 별도 시각 요소로 렌더링합니다.
 
 `align` 값은 줄이 만들어지거나 `ESC a n` 명령으로 정렬이 바뀌는 시점의 파서 상태를 반영합니다.
 
@@ -123,9 +126,11 @@ type TextStyle = {
 
 ```ts
 type ControlEvent = {
-  type: 'cut' | 'drawer' | 'beep' | 'feed' | 'unknown'
+  type: 'cut' | 'drawer' | 'beep' | 'feed' | 'barcode' | 'qrcode' | 'unknown'
   label: string
   offset: number
+  data?: string
+  symbology?: string
 }
 ```
 
@@ -182,9 +187,9 @@ HTML 렌더링은 중간 데이터 모델만 소비합니다.
 
 기본 스타일 span은 렌더링 옵션으로 제어합니다. `wrapPlainTextSpans`가 `true`이면 기본 텍스트도 `<span>a</span>` 형태로 출력하고, `false`이면 기본 스타일 텍스트는 `a`처럼 텍스트 노드로 출력합니다. 스타일이 적용된 span은 옵션과 관계없이 `<span style="...">`로 출력합니다.
 
-프리뷰 DOM은 ESC/POS 프린터의 고정폭 컬럼 모델을 흉내 내기 위해 텍스트를 문자 셀로 렌더링합니다. ASCII 문자는 1컬럼, 한글/CJK 전각 문자는 2컬럼으로 표시합니다. 이 처리는 화면 프리뷰용이며, 중간 데이터의 `ReceiptSpan.text` 값은 원본 텍스트를 유지합니다.
+프리뷰 DOM은 `packages/ui`의 canvas 기반 `ReceiptCanvas`로 ESC/POS 프린터의 고정폭 컬럼 모델을 흉내 냅니다. ASCII 문자는 1컬럼, 한글/CJK 전각 문자는 2컬럼으로 표시합니다. 이 처리는 화면 프리뷰용이며, 중간 데이터의 `ReceiptSpan.text` 값은 원본 텍스트를 유지합니다.
 
-입력 에디터도 같은 컬럼 폭 규칙을 사용합니다. 실제 입력 제어는 `textarea`가 담당하고, 화면 표시에는 문자 셀 기반 미러 레이어를 사용합니다. 이렇게 해야 사용자가 한글이 포함된 ESC/POS 샘플을 편집할 때도 프린터의 1바이트/2바이트 컬럼 정렬을 더 정확히 볼 수 있습니다.
+입력 에디터는 CodeMirror를 사용하고, 화면 표시에는 문자 셀 기반 프리뷰 레이어를 사용합니다. 이렇게 해야 사용자가 한글이 포함된 ESC/POS 샘플을 편집할 때도 프린터의 1바이트/2바이트 컬럼 정렬을 더 정확히 볼 수 있습니다.
 
 ## 확장 계획
 
@@ -207,6 +212,9 @@ type EscposSample = {
   description: string
   mode: InputMode
   input: string
+  inputMode?: InputMode
+  textEncoding?: string
+  preferredPreviewColumns?: 21 | 42
 }
 ```
 
