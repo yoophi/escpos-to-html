@@ -5,7 +5,7 @@ export type InputMode = 'escaped' | 'hex'
 export type Align = 'left' | 'center' | 'right'
 
 export type ControlEvent = {
-  type: 'cut' | 'drawer' | 'beep' | 'feed' | 'barcode' | 'qrcode' | 'unknown'
+  type: 'cut' | 'drawer' | 'beep' | 'feed' | 'barcode' | 'qrcode' | 'image' | 'unknown'
   label: string
   offset: number
   data?: string
@@ -40,13 +40,23 @@ export type ReceiptBarcode =
       symbology: 'QR Code'
       data: string
       moduleSize: number
-      errorCorrection: 'L' | 'M' | 'Q' | 'H'
-    }
+    errorCorrection: 'L' | 'M' | 'Q' | 'H'
+  }
+
+export type ReceiptImage = {
+  format: 'esc-star' | 'gs-v-0' | 'gs-l-112'
+  widthDots: number
+  heightDots: number
+  data: number[]
+  scaleX: 1 | 2
+  scaleY: 1 | 2
+}
 
 export type ReceiptLine = {
   align: Align
   spans: ReceiptSpan[]
   barcode?: ReceiptBarcode
+  image?: ReceiptImage
 }
 
 export type ParseResult = {
@@ -119,6 +129,100 @@ const BARCODE_SYMBOLOGIES: Record<number, string> = {
 
 const decodeBarcodeData = (data: number[]) =>
   data.map((byte) => (byte >= 0x20 && byte <= 0x7e ? String.fromCharCode(byte) : `\\x${byte.toString(16).padStart(2, '0')}`)).join('')
+
+type BitImageMode = {
+  bands: 1 | 3
+  scaleX: 1 | 2
+  scaleY: 1 | 2
+}
+
+const decodeBitImageMode = (mode: number): BitImageMode | null => {
+  switch (mode) {
+    case 0:
+      return { bands: 1, scaleX: 1, scaleY: 1 }
+    case 1:
+      return { bands: 1, scaleX: 2, scaleY: 1 }
+    case 32:
+      return { bands: 3, scaleX: 1, scaleY: 1 }
+    case 33:
+      return { bands: 3, scaleX: 2, scaleY: 1 }
+    case 48:
+      return { bands: 1, scaleX: 1, scaleY: 1 }
+    case 49:
+      return { bands: 1, scaleX: 2, scaleY: 1 }
+    case 50:
+      return { bands: 1, scaleX: 1, scaleY: 2 }
+    case 51:
+      return { bands: 1, scaleX: 2, scaleY: 2 }
+    default:
+      return null
+  }
+}
+
+const decodeEscStarImage = (mode: number, widthDots: number, data: number[]): ReceiptImage | null => {
+  const imageMode = decodeBitImageMode(mode)
+  if (!imageMode || imageMode.bands === 1 && mode >= 48) return null
+
+  const heightDots = imageMode.bands * 8
+  const rowBytes = Math.ceil(widthDots / 8)
+  const raster = Array.from({ length: rowBytes * heightDots }, () => 0)
+
+  for (let x = 0; x < widthDots; x += 1) {
+    for (let band = 0; band < imageMode.bands; band += 1) {
+      const columnByte = data[x * imageMode.bands + band]
+      for (let bit = 0; bit < 8; bit += 1) {
+        if ((columnByte & (0x80 >> bit)) === 0) continue
+        const y = band * 8 + bit
+        const offset = y * rowBytes + Math.floor(x / 8)
+        raster[offset] |= 0x80 >> (x % 8)
+      }
+    }
+  }
+
+  return {
+    format: 'esc-star',
+    widthDots,
+    heightDots,
+    data: raster,
+    scaleX: imageMode.scaleX,
+    scaleY: imageMode.scaleY,
+  }
+}
+
+const decodeGsV0Image = (mode: number, widthBytes: number, heightDots: number, data: number[]): ReceiptImage | null => {
+  const imageMode = decodeBitImageMode(mode)
+  if (!imageMode || imageMode.bands !== 1) return null
+
+  return {
+    format: 'gs-v-0',
+    widthDots: widthBytes * 8,
+    heightDots,
+    data: [...data],
+    scaleX: imageMode.scaleX,
+    scaleY: imageMode.scaleY,
+  }
+}
+
+const decodeGsL112Image = (
+  tone: number,
+  scaleX: number,
+  scaleY: number,
+  color: number,
+  widthDots: number,
+  heightDots: number,
+  data: number[],
+): ReceiptImage | null => {
+  if (tone !== 48 || color !== 49 || (scaleX !== 1 && scaleX !== 2) || (scaleY !== 1 && scaleY !== 2)) return null
+
+  return {
+    format: 'gs-l-112',
+    widthDots,
+    heightDots,
+    data: [...data],
+    scaleX: scaleX as 1 | 2,
+    scaleY: scaleY as 1 | 2,
+  }
+}
 
 export function parseInput(input: string, mode: InputMode): number[] {
   if (mode === 'hex') {
@@ -202,6 +306,7 @@ export function parseEscposBytes(bytes: number[], options: EscposParseOptions = 
   let style = defaultStyle()
   let align: Align = 'left'
   let textBuffer: number[] = []
+  let pendingGraphicsImage: ReceiptImage | null = null
   const barcodeSettings = { heightDots: 162, moduleWidth: 3, hriPosition: 0 as 0 | 1 | 2 | 3 }
   const qr = { model: '2', moduleSize: 3, errorCorrection: 'L' as 'L' | 'M' | 'Q' | 'H', data: null as string | null }
 
@@ -227,10 +332,20 @@ export function parseEscposBytes(bytes: number[], options: EscposParseOptions = 
 
   const emitBarcodeLine = (barcode: ReceiptBarcode) => {
     flushText()
-    if (currentLine().spans.length > 0 || currentLine().barcode) {
+    if (currentLine().spans.length > 0 || currentLine().barcode || currentLine().image) {
       lines.push({ align, spans: [] })
     }
     currentLine().barcode = barcode
+    lines.push({ align, spans: [] })
+  }
+
+  const emitImageLine = (image: ReceiptImage) => {
+    flushText()
+    if (currentLine().spans.length > 0 || currentLine().barcode || currentLine().image) {
+      lines.push({ align, spans: [] })
+    }
+    currentLine().align = 'center'
+    currentLine().image = image
     lines.push({ align, spans: [] })
   }
 
@@ -281,6 +396,30 @@ export function parseEscposBytes(bytes: number[], options: EscposParseOptions = 
       if (command === 0x40) {
         reset()
         i += 1
+        continue
+      }
+
+      if (command === 0x2a) {
+        const header = consume(i + 2, 3)
+        if (!header) break
+        const [mode, nL, nH] = header
+        const widthDots = nL + nH * 256
+        const imageMode = decodeBitImageMode(mode)
+        const dataLength = widthDots * (imageMode?.bands ?? (mode & 0x20 ? 3 : 1))
+        const data = consume(i + 5, dataLength)
+        if (!data) break
+        const image = decodeEscStarImage(mode, widthDots, data)
+        if (!image) {
+          warn(i, `지원하지 않는 ESC * 이미지 모드 m=${mode}`)
+        } else {
+          events.push({
+            type: 'image',
+            label: `ESC * image ${image.widthDots}x${image.heightDots} dots`,
+            offset: i,
+          })
+          emitImageLine(image)
+        }
+        i += 4 + dataLength
         continue
       }
 
@@ -361,12 +500,89 @@ export function parseEscposBytes(bytes: number[], options: EscposParseOptions = 
 
       flushText()
 
+      if (command === 0x28 && bytes[i + 2] === 0x4c) {
+        const lengthBytes = consume(i + 3, 2)
+        if (!lengthBytes) break
+        const parameterLength = lengthBytes[0] + lengthBytes[1] * 256
+        const parameters = consume(i + 5, parameterLength)
+        if (!parameters) break
+
+        const m = parameters[0]
+        const fn = parameters[1]
+        if (m === undefined || fn === undefined) {
+          warn(i, 'GS ( L 함수 인자가 부족합니다.')
+          i += 4 + parameterLength
+          continue
+        }
+
+        if (m === 48 && fn === 112) {
+          if (parameterLength < 10) {
+            warn(i, 'GS ( L 이미지 헤더가 부족합니다.')
+            i += 4 + parameterLength
+            continue
+          }
+          const [, , tone, scaleX, scaleY, color, xL, xH, yL, yH] = parameters
+          const widthDots = xL + xH * 256
+          const heightDots = yL + yH * 256
+          const dataLength = Math.ceil(widthDots / 8) * heightDots
+          if (parameterLength < 10 + dataLength) {
+            warn(i, 'GS ( L 이미지 데이터가 부족합니다.')
+            break
+          }
+          const data = parameters.slice(10, 10 + dataLength)
+          pendingGraphicsImage = decodeGsL112Image(tone, scaleX, scaleY, color, widthDots, heightDots, data)
+          if (!pendingGraphicsImage) {
+            warn(i, `지원하지 않는 GS ( L 이미지 설정 tone=${tone}, color=${color}, scale=${scaleX}x${scaleY}`)
+          }
+        } else if (m === 48 && fn === 50) {
+          if (!pendingGraphicsImage) {
+            warn(i, '출력할 GS ( L 그래픽 데이터가 없습니다.')
+          } else {
+            events.push({
+              type: 'image',
+              label: `GS ( L image ${pendingGraphicsImage.widthDots}x${pendingGraphicsImage.heightDots} dots`,
+              offset: i,
+            })
+            emitImageLine(pendingGraphicsImage)
+            pendingGraphicsImage = null
+          }
+        } else {
+          warn(i, `지원하지 않는 GS ( L 함수 m=${m}, fn=${fn}`)
+        }
+        i += 4 + parameterLength
+        continue
+      }
+
       if (command === 0x21) {
         const args = consume(i + 2, 1)
         if (!args) break
         style.width = ((args[0] >> 4) & 0x07) + 1
         style.height = (args[0] & 0x07) + 1
         i += 2
+        continue
+      }
+
+      if (command === 0x76 && bytes[i + 2] === 0x30) {
+        const header = consume(i + 3, 5)
+        if (!header) break
+        const [mode, xL, xH, yL, yH] = header
+        const widthBytes = xL + xH * 256
+        const heightDots = yL + yH * 256
+        const dataLength = widthBytes * heightDots
+        const data = consume(i + 8, dataLength)
+        if (!data) break
+        const image = decodeGsV0Image(mode, widthBytes, heightDots, data)
+        if (!image) {
+          warn(i, `지원하지 않는 GS v 0 이미지 모드 m=${mode}`)
+        } else {
+          events.push({
+            type: 'image',
+            label: `GS v 0 image ${image.widthDots}x${image.heightDots} dots`,
+            offset: i,
+          })
+          emitImageLine(image)
+        }
+        i += 7 + dataLength
         continue
       }
 
@@ -573,7 +789,12 @@ export function parseEscposBytes(bytes: number[], options: EscposParseOptions = 
 
   flushText()
 
-  while (lines.length > 1 && lines[lines.length - 1].spans.length === 0 && !lines[lines.length - 1].barcode) {
+  while (
+    lines.length > 1 &&
+    lines[lines.length - 1].spans.length === 0 &&
+    !lines[lines.length - 1].barcode &&
+    !lines[lines.length - 1].image
+  ) {
     lines.pop()
   }
 
@@ -602,9 +823,36 @@ const styleToCss = (style: TextStyle) => {
   return css.length > 0 ? ` style="${css.join('; ')}"` : ''
 }
 
+export function renderImageSvg(image: ReceiptImage) {
+  const rowBytes = Math.ceil(image.widthDots / 8)
+  const pathParts: string[] = []
+
+  for (let y = 0; y < image.heightDots; y += 1) {
+    let runStart = -1
+    for (let x = 0; x <= image.widthDots; x += 1) {
+      const isDark =
+        x < image.widthDots &&
+        (image.data[y * rowBytes + Math.floor(x / 8)] & (0x80 >> (x % 8))) !== 0
+
+      if (isDark && runStart < 0) runStart = x
+      if (!isDark && runStart >= 0) {
+        pathParts.push(`M${runStart} ${y}h${x - runStart}v1H${runStart}z`)
+        runStart = -1
+      }
+    }
+  }
+
+  const width = image.widthDots * image.scaleX
+  const height = image.heightDots * image.scaleY
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${image.widthDots} ${image.heightDots}" preserveAspectRatio="none" shape-rendering="crispEdges" role="img" aria-label="ESC/POS image ${image.widthDots}x${image.heightDots} dots"><path fill="#181713" d="${pathParts.join('')}"/></svg>`
+}
+
 export function renderHtml(result: ParseResult, options: HtmlRenderOptions = { wrapPlainTextSpans: true }) {
   const lines = result.lines
     .map((line) => {
+      if (line.image) {
+        return `<div class="receipt-line align-${line.align} receipt-image">${renderImageSvg(line.image)}</div>`
+      }
       if (line.barcode) {
         const { kind, symbology, data } = line.barcode
         return `<div class="receipt-line align-${line.align} receipt-barcode" data-kind="${kind}" data-symbology="${escapeHtml(symbology)}" data-value="${escapeHtml(data)}">[${escapeHtml(symbology)}] ${escapeHtml(data)}</div>`

@@ -106,6 +106,17 @@ Tax                    1.45
 \e d\x02\gV\x00`,
   },
   {
+    id: 'image-receipt',
+    title: 'Image receipt',
+    description: 'GS v 0 raster bit image과 이미지 이후 텍스트 출력을 확인하는 샘플입니다.',
+    inputMode: 'hex',
+    input: `
+1B 40 1B 61 01
+1D 76 30 00 02 00 04 00 FF FF 81 81 BD BD 81 81
+0A 49 4D 41 47 45 20 4F 4B 0A
+1D 56 00`.trim(),
+  },
+  {
     id: 'barcode-receipt',
     title: 'Barcode receipt',
     description: '1D 바코드(GS k 포맷 A/B)와 QR 코드(GS ( k 시퀀스)가 이벤트로 파싱되는 샘플입니다.',

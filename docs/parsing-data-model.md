@@ -13,6 +13,7 @@
 - 출력 순서대로 보이는 텍스트를 보존합니다.
 - 굵게, 밑줄, 반전, 폰트, 글자 크기 같은 텍스트 스타일 상태를 기록합니다.
 - 왼쪽, 가운데, 오른쪽 정렬 같은 줄 단위 레이아웃을 기록합니다.
+- `ESC *`, `GS v 0`, `GS ( L` raster 이미지 명령을 공통 bitmap으로 보존합니다.
 - 컷, 용지 피드, 비프, 금전함 펄스처럼 텍스트가 아닌 프린터 제어 명령을 이벤트로 보존합니다.
 
 ## 처리 흐름
@@ -82,10 +83,27 @@ type ParseResult = {
 type ReceiptLine = {
   align: 'left' | 'center' | 'right'
   spans: ReceiptSpan[]
+  image?: ReceiptImage
 }
 ```
 
 `align` 값은 줄이 만들어지거나 `ESC a n` 명령으로 정렬이 바뀌는 시점의 파서 상태를 반영합니다.
+
+### ReceiptImage
+
+이미지는 원본 명령의 데이터 형식과 관계없이 MSB-first raster bitmap으로 정규화합니다. `data`는 행 우선이며
+`ceil(widthDots / 8) * heightDots` 바이트입니다. `scaleX`와 `scaleY`는 프린터 명령의 출력 배율을 보존합니다.
+
+```ts
+type ReceiptImage = {
+  format: 'esc-star' | 'gs-v-0' | 'gs-l-112'
+  widthDots: number
+  heightDots: number
+  data: number[]
+  scaleX: 1 | 2
+  scaleY: 1 | 2
+}
+```
 
 ### ReceiptSpan
 
@@ -123,7 +141,7 @@ type TextStyle = {
 
 ```ts
 type ControlEvent = {
-  type: 'cut' | 'drawer' | 'beep' | 'feed' | 'unknown'
+  type: 'cut' | 'drawer' | 'beep' | 'feed' | 'barcode' | 'qrcode' | 'image' | 'unknown'
   label: string
   offset: number
 }
@@ -150,6 +168,9 @@ type ControlEvent = {
 | `GS ! n` | 글자 크기 | `TextStyle.width`, `TextStyle.height` 갱신 |
 | `GS B n` | 반전 인쇄 모드 | `TextStyle.inverted` 갱신 |
 | `GS V ...` | 용지 컷 | `ControlEvent` 추가 |
+| `ESC * m nL nH ...` | 8/24-dot column 이미지 | `ReceiptImage` 추가 |
+| `GS v 0 m xL xH yL yH ...` | raster 이미지(호환 명령) | `ReceiptImage` 추가 |
+| `GS ( L ... fn=112` + `fn=50` | raster graphics 저장/출력 | `ReceiptImage` 추가 |
 
 지원하지 않는 명령이 있어도 프리뷰가 중단되면 안 됩니다. 가능하면 바이트 offset이 포함된 경고를 만들고 계속 파싱합니다.
 
@@ -167,6 +188,14 @@ HTML 렌더링은 중간 데이터 모델만 소비합니다.
 
 ```html
 <span style="...">text</span>
+```
+
+`ReceiptImage`는 인라인 SVG로 변환해 다음과 같이 매핑합니다.
+
+```html
+<div class="receipt-line align-center receipt-image">
+  <svg viewBox="0 0 384 96" role="img">...</svg>
+</div>
 ```
 
 텍스트 내용은 반드시 HTML escape 처리합니다. 스타일은 내보내기용 HTML에서는 inline style로, React 프리뷰에서는 class와 style 객체 조합으로 표현할 수 있습니다.
@@ -190,7 +219,7 @@ HTML 렌더링은 중간 데이터 모델만 소비합니다.
 
 이 모델은 프린터의 저수준 내부 구조 대신 영수증 표현에 필요한 정보를 우선합니다. 이후 다음 기능을 추가할 수 있습니다.
 
-- 이미지 명령을 `ReceiptBlock` 레코드로 표현.
+- `GS ( L`의 다중 톤/색상 그래픽과 `GS ( L` Function 113 column 그래픽 지원.
 - 바코드와 QR 명령을 구조화된 block으로 표현.
 - 코드 페이지 선택과 명시적 텍스트 디코딩.
 - 영수증 합계 영역을 위한 컬럼 레이아웃 헬퍼.

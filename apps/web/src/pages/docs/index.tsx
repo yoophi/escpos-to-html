@@ -41,10 +41,23 @@ export function DocsPage() {
           />
           <DocCard
             title="ReceiptLine"
-            description="영수증 한 줄의 정렬과 스타일 span 목록을 담습니다."
+            description="영수증 한 줄의 정렬, 텍스트 span, 선택적 bitmap 이미지를 담습니다."
             code={`type ReceiptLine = {
   align: 'left' | 'center' | 'right'
   spans: ReceiptSpan[]
+  image?: ReceiptImage
+}`}
+          />
+          <DocCard
+            title="ReceiptImage"
+            description="ESC/POS 이미지 명령을 MSB-first raster bitmap으로 정규화한 값입니다."
+            code={`type ReceiptImage = {
+  format: 'esc-star' | 'gs-v-0' | 'gs-l-112'
+  widthDots: number
+  heightDots: number
+  data: number[]
+  scaleX: 1 | 2
+  scaleY: 1 | 2
 }`}
           />
           <DocCard
@@ -59,7 +72,7 @@ export function DocsPage() {
             title="ControlEvent"
             description="컷, 피드, 비프, 금전함 펄스처럼 화면 텍스트가 아닌 명령을 보존합니다."
             code={`type ControlEvent = {
-  type: 'cut' | 'drawer' | 'beep' | 'feed' | 'unknown'
+  type: 'cut' | 'drawer' | 'beep' | 'feed' | 'image' | 'unknown'
   label: string
   offset: number
 }`}

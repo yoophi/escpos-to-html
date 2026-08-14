@@ -3,6 +3,7 @@ import qrcode from 'qrcode-generator'
 import {
   type BarcodeModules,
   type ReceiptBarcode,
+  type ReceiptImage,
   type ReceiptLine,
   type TextStyle,
   encodeBarcodeModules,
@@ -66,6 +67,12 @@ type CanvasBarcode = {
   hriBelow: boolean
 }
 
+type CanvasImage = {
+  info: ReceiptImage
+  width: number
+  height: number
+}
+
 type CanvasLine = {
   align: ReceiptLine['align']
   tokens: CanvasToken[]
@@ -73,6 +80,7 @@ type CanvasLine = {
   heightScale: number
   heightPx: number
   barcode?: CanvasBarcode
+  image?: CanvasImage
 }
 
 const cellWidth = 10
@@ -82,6 +90,7 @@ const horizontalPadding = 14
 const verticalPadding = 18
 const hriLineHeight = 14
 const barcodePaddingY = 8
+const defaultPrintableWidthDots = 546 // Epson 80 mm, 42-column mode
 
 const styleKey = (style: TextStyle) =>
   [style.bold, style.underline, style.inverted, style.width, style.height, style.font].join(':')
@@ -152,11 +161,28 @@ function buildCanvasBarcode(info: ReceiptBarcode, contentWidth: number): { barco
   }
 }
 
+function buildCanvasImage(info: ReceiptImage, contentWidth: number, contentWidthDots: number): { image: CanvasImage; heightPx: number } {
+  const sourceWidth = info.widthDots * info.scaleX
+  const sourceHeight = info.heightDots * info.scaleY
+  const fitScale = Math.min(1, contentWidthDots / Math.max(1, sourceWidth))
+  const pixelsPerDot = contentWidth / contentWidthDots
+  const width = Math.max(1, Math.round(sourceWidth * fitScale * pixelsPerDot))
+  const height = Math.max(1, Math.round(sourceHeight * fitScale * pixelsPerDot))
+  return { image: { info, width, height }, heightPx: height }
+}
+
 function buildCanvasLines(lines: ReceiptLine[], columns: number): CanvasLine[] {
   const canvasLines: CanvasLine[] = []
   const contentWidth = columns * cellWidth
+  const contentWidthDots = Math.round((columns / 42) * defaultPrintableWidthDots)
 
   lines.forEach((line) => {
+    if (line.image) {
+      const { image, heightPx } = buildCanvasImage(line.image, contentWidth, contentWidthDots)
+      canvasLines.push({ align: line.align, tokens: [], columns: 0, heightScale: 1, heightPx, image })
+      return
+    }
+
     if (line.barcode) {
       const { barcode, heightPx } = buildCanvasBarcode(line.barcode, contentWidth)
       canvasLines.push({ align: line.align, tokens: [], columns: 0, heightScale: 1, heightPx, barcode })
@@ -209,6 +235,43 @@ function buildCanvasLines(lines: ReceiptLine[], columns: number): CanvasLine[] {
 
 function paperWidth(columns: number) {
   return columns * cellWidth + horizontalPadding * 2
+}
+
+function drawImage(
+  ctx: CanvasRenderingContext2D,
+  image: CanvasImage,
+  align: ReceiptLine['align'],
+  cssWidth: number,
+  y: number,
+) {
+  const x =
+    align === 'center'
+      ? (cssWidth - image.width) / 2
+      : align === 'right'
+        ? cssWidth - horizontalPadding - image.width
+        : horizontalPadding
+  const top = y
+  const rowBytes = Math.ceil(image.info.widthDots / 8)
+  const dotWidth = image.width / image.info.widthDots
+  const dotHeight = image.height / image.info.heightDots
+
+  ctx.save()
+  ctx.fillStyle = '#181713'
+  for (let row = 0; row < image.info.heightDots; row += 1) {
+    let runStart = -1
+    for (let col = 0; col <= image.info.widthDots; col += 1) {
+      const isDark =
+        col < image.info.widthDots &&
+        (image.info.data[row * rowBytes + Math.floor(col / 8)] & (0x80 >> (col % 8))) !== 0
+
+      if (isDark && runStart < 0) runStart = col
+      if (!isDark && runStart >= 0) {
+        ctx.fillRect(x + runStart * dotWidth, top + row * dotHeight, (col - runStart) * dotWidth, dotHeight)
+        runStart = -1
+      }
+    }
+  }
+  ctx.restore()
 }
 
 function drawBarcode(
@@ -283,6 +346,12 @@ function drawReceipt(
 
   canvasLines.forEach((line) => {
     const lineHeight = line.heightPx
+
+    if (line.image) {
+      drawImage(ctx, line.image, line.align, cssWidth, y)
+      y += lineHeight
+      return
+    }
 
     if (line.barcode) {
       drawBarcode(ctx, line.barcode, line.align, cssWidth, y, fontPreset.fontFamily)
