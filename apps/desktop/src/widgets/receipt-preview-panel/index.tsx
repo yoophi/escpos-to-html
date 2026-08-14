@@ -62,6 +62,7 @@ export function ReceiptPreviewPanel({ receipts, selectedReceiptId, onSelectRecei
       </div>
       <div className={isFullscreen ? 'min-h-0 flex-1 overflow-y-auto' : undefined}>
         <ReceiptRail
+          className={isFullscreen ? 'min-h-full' : undefined}
           receipts={receipts.map(
             (receipt): ReceiptRailItem => ({
               id: receipt.id,

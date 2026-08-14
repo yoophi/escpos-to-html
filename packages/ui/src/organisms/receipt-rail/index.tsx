@@ -14,15 +14,26 @@ type ReceiptRailProps = {
   selectedReceiptId?: string | null
   columns?: 21 | 42
   font?: ReceiptFontId
+  className?: string
   onSelectReceipt?: (receiptId: string) => void
 }
 
-export function ReceiptRail({ receipts, selectedReceiptId, columns = 42, font = 'd2coding', onSelectReceipt }: ReceiptRailProps) {
+export function ReceiptRail({
+  receipts,
+  selectedReceiptId,
+  columns = 42,
+  font = 'd2coding',
+  className,
+  onSelectReceipt,
+}: ReceiptRailProps) {
   const cardWidth = columns * 10 + 28 + 48
 
   return (
     <div
-      className="flex max-w-full gap-[18px] overflow-x-auto overflow-y-hidden bg-[#d8d2c3] bg-[linear-gradient(90deg,rgba(29,29,29,0.05)_1px,transparent_1px),linear-gradient(rgba(29,29,29,0.05)_1px,transparent_1px)] bg-[length:22px_22px] p-[18px] [overscroll-behavior-x:contain]"
+      className={cn(
+        'flex max-w-full gap-[18px] overflow-x-auto overflow-y-hidden bg-[#d8d2c3] bg-[linear-gradient(90deg,rgba(29,29,29,0.05)_1px,transparent_1px),linear-gradient(rgba(29,29,29,0.05)_1px,transparent_1px)] bg-[length:22px_22px] p-[18px] [overscroll-behavior-x:contain]',
+        className,
+      )}
       aria-label="Received receipt previews"
     >
       {receipts.map((receipt) => {
