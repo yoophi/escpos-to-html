@@ -1,5 +1,5 @@
 import { Trash2 } from 'lucide-react';
-import { Button } from '@escpos-to-html/ui';
+import { Button } from '@escpos-receipt-emulator/ui';
 import { type ReceiptViewModel, type TcpServerConfig } from '@/entities/receipt';
 
 type ReceiptSidebarProps = {

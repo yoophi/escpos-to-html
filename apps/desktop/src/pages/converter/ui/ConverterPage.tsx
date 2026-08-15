@@ -1,4 +1,4 @@
-import { Button } from '@escpos-to-html/ui';
+import { Button } from '@escpos-receipt-emulator/ui';
 
 export function ConverterPage() {
   return (

@@ -1,5 +1,5 @@
 import { Server, Square } from 'lucide-react';
-import { Button } from '@escpos-to-html/ui';
+import { Button } from '@escpos-receipt-emulator/ui';
 import { type TcpServerConfig, type TcpServerStatus } from '@/entities/receipt';
 
 type ReceiverHeaderProps = {

@@ -1,5 +1,5 @@
 {
-  "name": "@escpos-to-html/ui",
+  "name": "@escpos-receipt-emulator/ui",
   "private": true,
   "version": "0.0.0",
   "type": "module",
@@ -9,12 +9,13 @@
   },
   "scripts": {
     "build": "tsc --noEmit",
-    "lint": "eslint src"
+    "lint": "eslint src",
+    "test": "vitest run"
   },
   "dependencies": {
     "@codemirror/state": "^6.6.0",
     "@codemirror/view": "^6.43.1",
-    "@escpos-to-html/escpos": "workspace:*",
+    "@escpos-receipt-emulator/escpos": "workspace:*",
     "@radix-ui/react-checkbox": "^1.3.5",
     "@radix-ui/react-scroll-area": "^1.2.12",
     "@radix-ui/react-separator": "^1.1.10",
@@ -34,6 +35,7 @@
     "@storybook/react-vite": "10.4.6",
     "@types/react": "^19.2.14",
     "@types/react-dom": "^19.2.3",
-    "typescript": "~6.0.2"
+    "typescript": "~6.0.2",
+    "vitest": "^4.1.9"
   }
 }

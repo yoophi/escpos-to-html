@@ -1,9 +1,9 @@
 import { useState } from 'react'
 import { Braces } from 'lucide-react'
-import { type ParseResult } from '@escpos-to-html/escpos'
-import { PanelHeader } from '@escpos-to-html/ui'
-import { Card, CardContent } from '@escpos-to-html/ui'
-import { ScrollArea } from '@escpos-to-html/ui'
+import { type ParseResult } from '@escpos-receipt-emulator/escpos'
+import { PanelHeader } from '@escpos-receipt-emulator/ui'
+import { Card, CardContent } from '@escpos-receipt-emulator/ui'
+import { ScrollArea } from '@escpos-receipt-emulator/ui'
 
 type ParsedDataOutputProps = {
   data: ParseResult

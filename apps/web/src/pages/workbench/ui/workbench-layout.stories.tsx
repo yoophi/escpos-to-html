@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/react-vite'
-import { Card, CardContent } from '@escpos-to-html/ui'
+import { Card, CardContent } from '@escpos-receipt-emulator/ui'
 import { WorkbenchLayout } from './workbench-layout'
 
 function PlaceholderPanel({ label }: { label: string }) {

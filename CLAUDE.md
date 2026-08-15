@@ -53,7 +53,7 @@ app → pages → widgets → features → entities → shared
 ### shadcn/ui 추가
 
 ```bash
-pnpm --filter @escpos/desktop dlx shadcn@latest add <component>
+pnpm --filter @escpos-receipt-emulator/desktop dlx shadcn@latest add <component>
 ```
 설치된 컴포넌트는 `src/shared/ui/`에 떨어진다.
 

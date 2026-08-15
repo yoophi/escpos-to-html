@@ -1,10 +1,10 @@
 import { useState } from 'react'
 import { AlertTriangle } from 'lucide-react'
-import { type ControlEvent } from '@escpos-to-html/escpos'
-import { PanelHeader } from '@escpos-to-html/ui'
-import { Badge } from '@escpos-to-html/ui'
-import { Card, CardContent } from '@escpos-to-html/ui'
-import { Separator } from '@escpos-to-html/ui'
+import { type ControlEvent } from '@escpos-receipt-emulator/escpos'
+import { PanelHeader } from '@escpos-receipt-emulator/ui'
+import { Badge } from '@escpos-receipt-emulator/ui'
+import { Card, CardContent } from '@escpos-receipt-emulator/ui'
+import { Separator } from '@escpos-receipt-emulator/ui'
 
 type ParseEventsProps = {
   events: ControlEvent[]

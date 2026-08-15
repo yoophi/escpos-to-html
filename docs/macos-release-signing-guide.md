@@ -99,7 +99,7 @@ Tauri 문서 기준으로 `Developer ID Application` 인증서는 Account Holder
 
 ```bash
 APPLE_SIGNING_IDENTITY="Developer ID Application: <Team Name> (<Team ID>)" \
-pnpm --filter @escpos/desktop tauri build --bundles dmg
+pnpm --filter @escpos-receipt-emulator/desktop tauri build --bundles dmg
 ```
 
 ## Entitlements 검토
@@ -133,14 +133,14 @@ apps/desktop/src-tauri/entitlements.plist
 루트에서 실행한다.
 
 ```bash
-pnpm --filter @escpos/desktop build
-pnpm --filter @escpos/desktop tauri build
+pnpm --filter @escpos-receipt-emulator/desktop build
+pnpm --filter @escpos-receipt-emulator/desktop tauri build
 ```
 
 DMG만 생성할 경우:
 
 ```bash
-pnpm --filter @escpos/desktop tauri build --bundles dmg
+pnpm --filter @escpos-receipt-emulator/desktop tauri build --bundles dmg
 ```
 
 산출물은 일반적으로 다음 위치에 생성된다.
@@ -178,13 +178,13 @@ APPLE_TEAM_ID="<team-id>"
 환경변수 설정 후 다시 빌드한다.
 
 ```bash
-pnpm --filter @escpos/desktop tauri build --bundles dmg
+pnpm --filter @escpos-receipt-emulator/desktop tauri build --bundles dmg
 ```
 
 초기 검증 과정에서 stapling을 잠시 건너뛰려면 다음 옵션을 사용할 수 있다.
 
 ```bash
-pnpm --filter @escpos/desktop tauri build --bundles dmg --skip-stapling
+pnpm --filter @escpos-receipt-emulator/desktop tauri build --bundles dmg --skip-stapling
 ```
 
 최종 배포물은 stapling까지 완료되어야 한다.
@@ -238,7 +238,7 @@ CI에서는 임시 keychain을 생성하고 인증서를 import한 뒤 `tauri bu
 }
 ```
 
-다만 실제 적용 시에는 현재 monorepo 스크립트 구조에 맞춰 `pnpm --filter @escpos/desktop ...` 형태로 호출하는 것이 안전하다.
+다만 실제 적용 시에는 현재 monorepo 스크립트 구조에 맞춰 `pnpm --filter @escpos-receipt-emulator/desktop ...` 형태로 호출하는 것이 안전하다.
 
 ## 작업 체크리스트
 
@@ -251,7 +251,7 @@ CI에서는 임시 keychain을 생성하고 인증서를 import한 뒤 `tauri bu
 - [ ] `bundle.targets`를 `["app", "dmg"]` 등으로 설정
 - [ ] signing identity 설정 또는 `APPLE_SIGNING_IDENTITY` 환경변수 사용
 - [ ] entitlements 파일 추가 및 권한 최소화
-- [ ] `pnpm --filter @escpos/desktop tauri build --bundles dmg` 실행
+- [ ] `pnpm --filter @escpos-receipt-emulator/desktop tauri build --bundles dmg` 실행
 - [ ] notarization 환경변수 설정
 - [ ] notarization 및 stapling 완료
 - [ ] `codesign` 검증

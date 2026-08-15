@@ -1,5 +1,5 @@
 {
-  "name": "@escpos-to-html/escpos",
+  "name": "@escpos-receipt-emulator/escpos",
   "private": true,
   "version": "0.0.0",
   "type": "module",

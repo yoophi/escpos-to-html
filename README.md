@@ -1,8 +1,10 @@
-# ESC/POS to HTML
+# ESC/POS Receipt Emulator
 
-ESC/POS 문법으로 작성된 텍스트, hex 바이트, TCP로 수신한 프린터 데이터를 영수증 형태로 프리뷰하는 모노레포입니다.
+ESC/POS 문법으로 작성된 텍스트·hex 바이트·TCP 수신 데이터를 영수증 형태로 에뮬레이션하고 프리뷰하는 모노레포입니다.
 
-웹앱은 ESC/POS 샘플을 브라우저에서 빠르게 확인하는 용도이고, 데스크탑 앱은 Tauri 기반 가상 프린터로 TCP 소켓을 열어 실제 POS 출력 데이터를 수신합니다.
+웹앱은 ESC/POS 샘플을 브라우저에서 빠르게 확인하는 용도이고, 데스크탑 앱은 Tauri 기반 영수증 에뮬레이터로 TCP 소켓을 열어 실제 POS 출력 데이터를 수신합니다.
+
+> 이 프로젝트는 OS 프린터 드라이버를 설치하는 가상 프린터가 아닙니다. ESC/POS 스트림을 수신·파싱·시각 검증하는 개발 및 통합 테스트 도구입니다.
 
 ## 실행
 
@@ -14,9 +16,9 @@ pnpm dev
 개별 앱만 실행하려면 다음 명령을 사용할 수 있습니다.
 
 ```sh
-pnpm --filter web dev
-pnpm --filter @escpos/desktop tauri dev
-pnpm --filter web storybook
+pnpm --filter @escpos-receipt-emulator/web dev
+pnpm --filter @escpos-receipt-emulator/desktop tauri dev
+pnpm --filter @escpos-receipt-emulator/web storybook
 ```
 
 ## 프로젝트 구조
@@ -50,18 +52,28 @@ apps/{web,desktop}/src/
 - 이스케이프 텍스트 입력과 hex 입력 지원
 - ESC/POS 스타일 명령을 중간 데이터로 파싱
 - Canvas 기반 영수증 프리뷰와 HTML 출력 동시 제공
+- 래스터·비트 이미지와 QR·1D 바코드 프리뷰
 - 기본 텍스트의 `<span>` 래핑 표시/미표시 옵션
 - 컷, 피드, 비프, 금전함 펄스 같은 제어 명령 이벤트 표시
 - `react-router-dom` 기반 샘플 라우팅
 - EUC-KR 한글 영수증을 포함한 다양한 ESC/POS 샘플 제공
 - Storybook 기반 Atomic Design 컴포넌트 확인
 
+## 검증
+
+```sh
+pnpm test
+pnpm --filter @escpos-receipt-emulator/desktop test
+pnpm build
+cargo test --manifest-path apps/desktop/src-tauri/Cargo.toml
+```
+
 ## 웹앱
 
 웹앱은 ESC/POS 입력을 샘플별로 확인하는 개발/디버그 도구입니다.
 
 ```sh
-pnpm --filter web dev
+pnpm --filter @escpos-receipt-emulator/web dev
 ```
 
 기본 주소는 [http://localhost:5173](http://localhost:5173) 입니다.
@@ -84,10 +96,10 @@ pnpm --filter web dev
 
 ## 데스크탑 앱
 
-데스크탑 앱은 Tauri 기반 ESC/POS 가상 프린터입니다. TCP 소켓을 열고 POS 또는 테스트 클라이언트가 전송한 ESC/POS bytes를 수신해 화면에 영수증으로 표시합니다.
+데스크탑 앱은 Tauri 기반 ESC/POS 영수증 에뮬레이터입니다. TCP 소켓을 열고 POS 또는 테스트 클라이언트가 전송한 ESC/POS bytes를 수신해 화면에 영수증으로 표시합니다.
 
 ```sh
-pnpm --filter @escpos/desktop tauri dev
+pnpm --filter @escpos-receipt-emulator/desktop tauri dev
 ```
 
 개발 서버 주소는 [http://localhost:1420](http://localhost:1420) 입니다. 실제 앱 창은 Tauri가 별도로 띄웁니다.
@@ -159,7 +171,7 @@ apps/desktop/src/
 공용 UI 컴포넌트는 `packages/ui`에 있으며 Storybook에서 Atomic Design 트리로 확인할 수 있습니다.
 
 ```sh
-pnpm --filter web storybook
+pnpm --filter @escpos-receipt-emulator/web storybook
 ```
 
 기본 주소는 [http://localhost:6006](http://localhost:6006) 입니다.
@@ -169,3 +181,7 @@ pnpm --filter web storybook
 중간 데이터 모델과 ESC/POS 처리 흐름은 [docs/parsing-data-model.md](docs/parsing-data-model.md)에 정리되어 있습니다.
 
 데스크탑 TCP 수신 앱 설계는 [docs/desktop-tcp-receipt-preview-design.md](docs/desktop-tcp-receipt-preview-design.md)에 정리되어 있습니다.
+
+QR 명령의 Epson 제약사항과 현재 프리뷰 구현의 차이는 [docs/20260814-escpos-qr-spec.md](docs/20260814-escpos-qr-spec.md)에 정리되어 있습니다.
+
+최근 변경 영역의 deepening 후보와 세부 검토는 [docs/architecture/README.md](docs/architecture/README.md)에 정리되어 있습니다.

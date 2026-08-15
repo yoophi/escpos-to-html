@@ -7,7 +7,7 @@ import {
   receiptFontPresets,
   type ReceiptFontId,
   type ReceiptRailItem,
-} from '@escpos-to-html/ui';
+} from '@escpos-receipt-emulator/ui';
 import { type ReceiptViewModel } from '@/entities/receipt';
 
 type ReceiptPreviewPanelProps = {

@@ -1,5 +1,5 @@
 {
-  "name": "web",
+  "name": "@escpos-receipt-emulator/web",
   "private": true,
   "version": "0.0.0",
   "type": "module",
@@ -14,8 +14,8 @@
   "dependencies": {
     "@codemirror/state": "^6.6.0",
     "@codemirror/view": "^6.43.1",
-    "@escpos-to-html/escpos": "workspace:*",
-    "@escpos-to-html/ui": "workspace:*",
+    "@escpos-receipt-emulator/escpos": "workspace:*",
+    "@escpos-receipt-emulator/ui": "workspace:*",
     "@fontsource/nanum-gothic-coding": "^5.2.8",
     "@radix-ui/react-checkbox": "^1.3.5",
     "@radix-ui/react-scroll-area": "^1.2.12",

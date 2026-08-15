@@ -1,5 +1,5 @@
 {
-  "name": "@escpos/desktop",
+  "name": "@escpos-receipt-emulator/desktop",
   "version": "0.0.0",
   "private": true,
   "type": "module",
@@ -15,8 +15,8 @@
     "lint": "echo 'lint: pending eslint config'"
   },
   "dependencies": {
-    "@escpos-to-html/escpos": "workspace:*",
-    "@escpos-to-html/ui": "workspace:*",
+    "@escpos-receipt-emulator/escpos": "workspace:*",
+    "@escpos-receipt-emulator/ui": "workspace:*",
     "@tauri-apps/api": "^2.1.1",
     "@tauri-apps/plugin-dialog": "^2.0.1",
     "class-variance-authority": "^0.7.1",

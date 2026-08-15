@@ -1,9 +1,9 @@
 import { useState } from 'react'
 import { Code2, ListChecks } from 'lucide-react'
-import { PanelHeader } from '@escpos-to-html/ui'
-import { Card, CardContent } from '@escpos-to-html/ui'
-import { Checkbox } from '@escpos-to-html/ui'
-import { ScrollArea } from '@escpos-to-html/ui'
+import { PanelHeader } from '@escpos-receipt-emulator/ui'
+import { Card, CardContent } from '@escpos-receipt-emulator/ui'
+import { Checkbox } from '@escpos-receipt-emulator/ui'
+import { ScrollArea } from '@escpos-receipt-emulator/ui'
 
 type HtmlOutputProps = {
   html: string

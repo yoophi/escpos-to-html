@@ -1,12 +1,12 @@
 import { useEffect, useState } from 'react'
 import { Clipboard } from 'lucide-react'
-import { type ParseResult } from '@escpos-to-html/escpos'
-import { PresetSegment, type PresetSegmentItem } from '@escpos-to-html/ui'
-import { ReceiptCanvas, receiptFontPresets, type ReceiptFontId } from '@escpos-to-html/ui'
-import { ReceiptStage } from '@escpos-to-html/ui'
-import { PanelHeader } from '@escpos-to-html/ui'
-import { Button } from '@escpos-to-html/ui'
-import { Card, CardContent } from '@escpos-to-html/ui'
+import { type ParseResult } from '@escpos-receipt-emulator/escpos'
+import { PresetSegment, type PresetSegmentItem } from '@escpos-receipt-emulator/ui'
+import { ReceiptCanvas, receiptFontPresets, type ReceiptFontId } from '@escpos-receipt-emulator/ui'
+import { ReceiptStage } from '@escpos-receipt-emulator/ui'
+import { PanelHeader } from '@escpos-receipt-emulator/ui'
+import { Button } from '@escpos-receipt-emulator/ui'
+import { Card, CardContent } from '@escpos-receipt-emulator/ui'
 
 const receiptPreviewPresets = [
   {

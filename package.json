@@ -1,16 +1,16 @@
 {
-  "name": "escpos-to-html",
+  "name": "escpos-receipt-emulator",
   "private": true,
   "version": "0.0.0",
   "type": "module",
   "packageManager": "pnpm@9.15.5",
   "scripts": {
-    "dev": "pnpm --filter web dev",
+    "dev": "pnpm --filter @escpos-receipt-emulator/web dev",
     "build": "pnpm -r build",
     "lint": "pnpm -r lint",
-    "test": "pnpm --filter @escpos-to-html/escpos test",
-    "test:coverage": "pnpm --filter @escpos-to-html/escpos test:coverage",
-    "preview": "pnpm --filter web preview"
+    "test": "pnpm --filter @escpos-receipt-emulator/escpos test",
+    "test:coverage": "pnpm --filter @escpos-receipt-emulator/escpos test:coverage",
+    "preview": "pnpm --filter @escpos-receipt-emulator/web preview"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",

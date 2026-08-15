@@ -1,4 +1,4 @@
-import { type InputMode } from '@escpos-to-html/escpos'
+import { type InputMode } from '@escpos-receipt-emulator/escpos'
 
 export type EscposSample = {
   id: string
@@ -104,6 +104,17 @@ Tax                    1.45
 \e a\x01\gB\x01 결제완료 \gB\x00
 감사합니다
 \e d\x02\gV\x00`,
+  },
+  {
+    id: 'image-receipt',
+    title: 'Image receipt',
+    description: 'GS v 0 raster bit image과 이미지 이후 텍스트 출력을 확인하는 샘플입니다.',
+    inputMode: 'hex',
+    input: `
+1B 40 1B 61 01
+1D 76 30 00 02 00 04 00 FF FF 81 81 BD BD 81 81
+0A 49 4D 41 47 45 20 4F 4B 0A
+1D 56 00`.trim(),
   },
   {
     id: 'barcode-receipt',

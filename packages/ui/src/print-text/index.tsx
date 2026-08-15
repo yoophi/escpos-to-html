@@ -1,4 +1,4 @@
-import { isWidePrintChar } from '@escpos-to-html/escpos'
+import { isWidePrintChar } from '@escpos-receipt-emulator/escpos'
 
 type PrintTextProps = {
   text: string

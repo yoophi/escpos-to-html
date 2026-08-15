@@ -1,5 +1,5 @@
 import { type CSSProperties } from 'react'
-import { type ReceiptLine } from '@escpos-to-html/escpos'
+import { renderImageSvg, type ReceiptLine } from '@escpos-receipt-emulator/escpos'
 import { cn } from '../../lib/utils'
 import { PrintText } from '../../print-text'
 
@@ -21,7 +21,9 @@ export function ReceiptPaper({ lines, columns = 42 }: ReceiptPaperProps) {
     >
       {lines.map((line, index) => (
         <div className="min-h-[18px]" key={`${index}-${line.align}`} style={{ textAlign: line.align }}>
-          {line.spans.length === 0
+          {line.image
+            ? <div dangerouslySetInnerHTML={{ __html: renderImageSvg(line.image) }} />
+            : line.spans.length === 0
             ? '\u00a0'
             : line.spans.map((span, spanIndex) => (
                 <span

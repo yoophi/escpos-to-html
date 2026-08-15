@@ -1,8 +1,8 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "ESC-POS to HTML",
+  "productName": "ESC POS Receipt Emulator",
   "version": "0.0.0",
-  "identifier": "in.payhere.escpos-to-html",
+  "identifier": "in.payhere.escpos-receipt-emulator",
   "build": {
     "beforeDevCommand": "pnpm dev",
     "devUrl": "http://localhost:1420",
@@ -12,7 +12,7 @@
   "app": {
     "windows": [
       {
-        "title": "ESC/POS to HTML",
+        "title": "ESC POS Receipt Emulator",
         "width": 1200,
         "height": 800,
         "minWidth": 800,

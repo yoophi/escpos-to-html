@@ -231,6 +231,102 @@ describe('renderHtml', () => {
     expect(html).toContain('font-size: .88em')
     expect(html).toContain('font-size: .78em')
   })
+
+  it('renders parsed images as inline SVG', () => {
+    const result = parseEscposBytes([0x1d, 0x76, 0x30, 0, 1, 0, 1, 0, 0x81])
+    const html = renderHtml(result)
+
+    expect(html).toContain('class="receipt-line align-center receipt-image"')
+    expect(html).toContain('<svg')
+    expect(html).toContain('viewBox="0 0 8 1"')
+    expect(html).toContain('M0 0h1v1H0z')
+    expect(html).toContain('M7 0h1v1H7z')
+  })
+})
+
+describe('image parsing', () => {
+  it('parses GS v 0 raster data with MSB-first rows', () => {
+    const result = parseEscposBytes([
+      0x1d, 0x76, 0x30, 0x00,
+      0x01, 0x00,
+      0x02, 0x00,
+      0x81, 0x42,
+      ...Array.from(new TextEncoder().encode('AFTER')),
+    ])
+
+    expect(result.warnings).toEqual([])
+    expect(result.events).toEqual([{ type: 'image', label: 'GS v 0 image 8x2 dots', offset: 0 }])
+    expect(result.lines[0].image).toEqual({
+      format: 'gs-v-0',
+      widthDots: 8,
+      heightDots: 2,
+      data: [0x81, 0x42],
+      scaleX: 1,
+      scaleY: 1,
+    })
+    expect(result.lines[1].spans[0].text).toBe('AFTER')
+  })
+
+  it('centers images independently of the active text alignment', () => {
+    const result = parseEscposBytes([
+      0x1b, 0x61, 0x02,
+      0x1d, 0x76, 0x30, 0x00, 1, 0, 1, 0, 0xff,
+    ])
+
+    expect(result.lines[0].align).toBe('center')
+    expect(result.lines[0].image).toBeDefined()
+  })
+
+  it('parses ESC * 8-dot column data into raster rows', () => {
+    const result = parseEscposBytes([
+      0x1b, 0x2a, 0x00,
+      0x08, 0x00,
+      0x80, 0x40, 0, 0, 0, 0, 0, 0,
+    ])
+
+    expect(result.warnings).toEqual([])
+    expect(result.events).toEqual([{ type: 'image', label: 'ESC * image 8x8 dots', offset: 0 }])
+    expect(result.lines[0].image).toMatchObject({
+      format: 'esc-star',
+      widthDots: 8,
+      heightDots: 8,
+      data: [0x80, 0x40, 0, 0, 0, 0, 0, 0],
+      scaleX: 1,
+      scaleY: 1,
+    })
+  })
+
+  it('supports GS v 0 double scaling and rejects incomplete image payloads', () => {
+    const result = parseEscposBytes([0x1d, 0x76, 0x30, 0x33, 1, 0, 1, 0, 0xff])
+
+    expect(result.warnings).toEqual([])
+    expect(result.lines[0].image).toMatchObject({ scaleX: 2, scaleY: 2 })
+    expect(parseEscposBytes([0x1d, 0x76, 0x30, 0, 1, 0, 2, 0, 0xff]).warnings).toEqual([
+      '0x0008: 명령 인자가 부족합니다.',
+    ])
+  })
+
+  it('buffers GS ( L Function 112 raster data until Function 50 prints it', () => {
+    const result = parseEscposBytes([
+      0x1d, 0x28, 0x4c, 0x0b, 0x00,
+      0x30, 0x70, 0x30, 0x01, 0x01, 0x31,
+      0x08, 0x00, 0x01, 0x00, 0x81,
+      0x1d, 0x28, 0x4c, 0x02, 0x00, 0x30, 0x32,
+      ...Array.from(new TextEncoder().encode('AFTER')),
+    ])
+
+    expect(result.warnings).toEqual([])
+    expect(result.events).toEqual([{ type: 'image', label: 'GS ( L image 8x1 dots', offset: 16 }])
+    expect(result.lines[0].image).toMatchObject({
+      format: 'gs-l-112',
+      widthDots: 8,
+      heightDots: 1,
+      data: [0x81],
+      scaleX: 1,
+      scaleY: 1,
+    })
+    expect(result.lines[1].spans[0].text).toBe('AFTER')
+  })
 })
 
 describe('format helpers', () => {

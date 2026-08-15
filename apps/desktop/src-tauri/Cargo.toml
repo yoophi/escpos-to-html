@@ -1,7 +1,7 @@
 [package]
 name = "escpos-desktop"
 version = "0.0.0"
-description = "ESC/POS to HTML desktop app"
+description = "ESC/POS Receipt Emulator desktop app"
 authors = ["pyunghyuk.yoo@payhere.in"]
 edition = "2021"
 rust-version = "1.77.2"

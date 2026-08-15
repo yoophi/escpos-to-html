@@ -26,10 +26,10 @@ importers:
 
   apps/desktop:
     dependencies:
-      '@escpos-to-html/escpos':
+      '@escpos-receipt-emulator/escpos':
         specifier: workspace:*
         version: link:../../packages/escpos
-      '@escpos-to-html/ui':
+      '@escpos-receipt-emulator/ui':
         specifier: workspace:*
         version: link:../../packages/ui
       '@tauri-apps/api':
@@ -117,10 +117,10 @@ importers:
       '@codemirror/view':
         specifier: ^6.43.1
         version: 6.43.1
-      '@escpos-to-html/escpos':
+      '@escpos-receipt-emulator/escpos':
         specifier: workspace:*
         version: link:../../packages/escpos
-      '@escpos-to-html/ui':
+      '@escpos-receipt-emulator/ui':
         specifier: workspace:*
         version: link:../../packages/ui
       '@fontsource/nanum-gothic-coding':
@@ -229,7 +229,7 @@ importers:
       '@codemirror/view':
         specifier: ^6.43.1
         version: 6.43.1
-      '@escpos-to-html/escpos':
+      '@escpos-receipt-emulator/escpos':
         specifier: workspace:*
         version: link:../escpos
       '@radix-ui/react-checkbox':
@@ -281,6 +281,9 @@ importers:
       typescript:
         specifier: ~6.0.2
         version: 6.0.3
+      vitest:
+        specifier: ^4.1.9
+        version: 4.1.9(@types/node@24.13.2)(@vitest/coverage-v8@4.1.9)(jsdom@25.0.1)(vite@8.0.16(@types/node@24.13.2)(esbuild@0.28.1)(jiti@2.7.0)(yaml@2.9.0))
 
 packages:
 

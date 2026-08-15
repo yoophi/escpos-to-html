@@ -1,7 +1,7 @@
 import { type EscposSample, samples } from '../../entities/sample'
-import { Button } from '@escpos-to-html/ui'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@escpos-to-html/ui'
-import { ScrollArea, ScrollBar } from '@escpos-to-html/ui'
+import { Button } from '@escpos-receipt-emulator/ui'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@escpos-receipt-emulator/ui'
+import { ScrollArea, ScrollBar } from '@escpos-receipt-emulator/ui'
 
 type SampleSelectorProps = {
   selectedSample: EscposSample
